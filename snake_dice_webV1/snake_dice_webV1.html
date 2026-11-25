@@ -1,0 +1,1048 @@
+<!doctype html> <!--wrap-->
+<html lang="ko"> <!--wrap-->
+<head> <!--wrap-->
+<meta charset="utf-8"> <!--wrap-->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"> <!--wrap-->
+<title>뱀주사위놀이</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* 레이아웃: 문방구 종이 놀이판 느낌. 노란 제목 띠 + 왼쪽 큰 놀이판 + 오른쪽 조작 패널(휴대폰에서는 위아래로 쌓음) */
+:root {
+  --bg: #EAF0FA;
+  --surface: #FFFFFF;
+  --ink: #1B1E3C;
+  --muted: #565B80;
+  --line: #C9D1E6;
+  --chip: #E4E9F5;
+  --accent: #D62839;
+  --accent-ink: #FFFFFF;
+  --block-shadow: #1B1E3C;
+  --band: #FFC93C;
+  --band-ink: #1B1E3C;
+  --title: #D62839;
+  --focus: #2F6BFF;
+  --dice-face: #FFFFFF;
+  --dice-edge: #1B1E3C;
+  --dice-pip: #1B1E3C;
+  --dice-one: #D62839;
+  --font-display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11132A;
+    --surface: #1B1E3C;
+    --ink: #EEF0FA;
+    --muted: #A9AED0;
+    --line: #353A6C;
+    --chip: #282C55;
+    --accent: #FF5A67;
+    --accent-ink: #1B0A0C;
+    --block-shadow: #05060F;
+    --focus: #8DACFF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11132A;
+  --surface: #1B1E3C;
+  --ink: #EEF0FA;
+  --muted: #A9AED0;
+  --line: #353A6C;
+  --chip: #282C55;
+  --accent: #FF5A67;
+  --accent-ink: #1B0A0C;
+  --block-shadow: #05060F;
+  --focus: #8DACFF;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* 제목 띠 */
+.band {
+  background: var(--band);
+  color: var(--band-ink);
+  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + 22px);
+  padding-bottom: 18px;
+  border-bottom: 4px solid var(--band-ink);
+}
+.band-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 7vw, 3.8rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--title);
+  text-shadow: 3px 3px 0 var(--band-ink);
+  text-wrap: balance;
+}
+.tagline {
+  margin: 0;
+  max-width: 28em;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* 본문 */
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+@media (min-width: 880px) {
+  .wrap { grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); align-items: start; }
+}
+
+.board-col { min-width: 0; display: grid; gap: 10px; }
+#board {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 600 / 660;
+  border-radius: 6px;
+  box-shadow: 6px 6px 0 var(--block-shadow);
+  background: #1B1E3C;
+}
+.legend {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.panel { min-width: 0; display: grid; gap: 16px; }
+
+/* 차례와 주사위 */
+.turn {
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 var(--block-shadow);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.turn-label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.dice-row { display: flex; align-items: center; gap: 16px; }
+.dice {
+  flex: none;
+  width: 76px;
+  height: 76px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  background: var(--dice-face);
+  border: 3px solid var(--dice-edge);
+  border-radius: 16px;
+  box-shadow: inset -5px -5px 0 rgba(27, 30, 60, 0.12);
+}
+.pip { width: 13px; height: 13px; border-radius: 50%; place-self: center; }
+.pip.on { background: var(--dice-pip); }
+.dice[data-face="1"] .pip.on { background: var(--dice-one); width: 22px; height: 22px; }
+.dice.rolling { animation: shake 0.13s linear infinite; }
+@keyframes shake {
+  0% { transform: rotate(-9deg) translateY(-2px); }
+  50% { transform: rotate(9deg) translateY(2px); }
+  100% { transform: rotate(-9deg) translateY(-2px); }
+}
+.roll {
+  flex: 1;
+  min-width: 0;
+  min-height: 60px;
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--block-shadow);
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.roll:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--block-shadow); }
+.roll:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.status { margin: 0; color: var(--muted); font-size: 0.9rem; min-height: 1.55em; }
+
+/* 말 */
+.token {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1;
+  border: 2px solid #1B1E3C;
+}
+
+/* 참가자 목록 */
+.players { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+}
+.player.is-turn { border-color: var(--ink); }
+.player.is-winner { border-color: var(--accent); }
+.pname { font-weight: 700; overflow-wrap: anywhere; }
+.chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--muted);
+}
+.pos {
+  min-width: 4.5em;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 접히는 칸: 참가자 바꾸기, 놀이법 */
+details {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 0 14px;
+}
+summary {
+  cursor: pointer;
+  padding: 11px 0;
+  font-weight: 700;
+}
+details[open] { padding-bottom: 14px; }
+.slots { display: grid; gap: 8px; margin-bottom: 12px; }
+.slot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.slot label { font-weight: 600; }
+select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+.btn {
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--chip);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.error { margin: 0 0 10px; color: var(--accent); font-weight: 700; }
+.rules { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+
+/* 기록 */
+.log-title { margin: 0 0 8px; font-size: 1rem; }
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+.log li { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.log li span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.log li.strong { font-weight: 700; }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #1B1E3C; transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dice.rolling { animation: none; }
+  .roll { transition: none; }
+}
+</style>
+</head> <!--wrap-->
+<body> <!--wrap-->
+
+<header class="band">
+  <div class="band-inner">
+    <div>
+      <p class="eyebrow">주사위를 굴려 100칸까지</p>
+      <h1 class="title">뱀주사위놀이</h1>
+    </div>
+    <p class="tagline">사다리를 만나면 올라가고, 뱀을 만나면 미끄러집니다. 100칸에 정확히 도착하면 이깁니다.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="board-col" aria-label="게임판">
+    <canvas id="board" width="1200" height="1320">게임판 그림입니다. 각 말의 위치는 참가자 목록에서 볼 수 있습니다.</canvas>
+    <p class="legend">
+      <span>사다리 7개: 올라감</span>
+      <span>뱀 8개: 내려감</span>
+      <span>100칸을 넘치면 넘친 만큼 되돌아옴</span>
+    </p>
+  </section>
+
+  <aside class="panel">
+    <section class="turn" aria-live="polite">
+      <h2 class="turn-label" id="turnLabel">게임 준비 중</h2>
+      <div class="dice-row">
+        <div class="dice" id="dice" data-face="1" role="img" aria-label="주사위 1">
+          <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+        </div>
+        <button type="button" class="roll" id="rollBtn">주사위 굴리기</button>
+      </div>
+      <p class="status" id="status"></p>
+    </section>
+
+    <ul class="players" id="players" aria-label="참가자"></ul>
+
+    <details id="setupBox">
+      <summary>참가자 바꾸기</summary>
+      <div class="slots" id="slots"></div>
+      <p class="error" id="setupError" hidden></p>
+      <button type="button" class="btn" id="newGameBtn">새 게임 시작</button>
+    </details>
+
+    <details>
+      <summary>놀이법</summary>
+      <ol class="rules">
+        <li>차례대로 주사위를 굴려 나온 수만큼 앞으로 갑니다.</li>
+        <li>사다리 아래 칸에 멈추면 사다리를 타고 올라갑니다.</li>
+        <li>뱀 머리 칸에 멈추면 뱀 꼬리 칸으로 미끄러집니다.</li>
+        <li>100칸에 정확히 도착하면 이깁니다. 넘치면 넘친 만큼 되돌아옵니다.</li>
+      </ol>
+    </details>
+
+    <section>
+      <h2 class="log-title">기록</h2>
+      <ol class="log" id="log"></ol>
+    </section>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 게임 규칙 (Rust 버전과 같은 배치) ----------
+  const GOAL = 100;
+  const JUMPS = {
+    4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92,          // 사다리
+    27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 99: 41    // 뱀
+  };
+
+  // ---------- 그림 크기 (논리 좌표, 2배 해상도로 그림) ----------
+  const CELL = 60, BOARD = 600, STRIP = 60, W = 600, H = BOARD + STRIP, SCALE = 2;
+  const INK = '#1B1E3C', PAPER = '#FFF8E7';
+  const TILE_COLORS = ['#FFD45C', '#FF9EAE', '#8FD8F0', '#A6E3A1'];
+  const SNAKE_COLORS = [
+    ['#2E9E4F', '#C0EB75'], ['#D9480F', '#FFC078'], ['#7048E8', '#D0BFFF'], ['#0B7285', '#99E9F2'],
+    ['#C2255C', '#FCC2D7'], ['#5C940D', '#E9FAC8'], ['#E67700', '#FFE066'], ['#364FC7', '#BAC8FF']
+  ];
+  const SLOTS = [
+    { letter: 'A', color: '#E63946', text: '#FFFFFF' },
+    { letter: 'B', color: '#2F6BFF', text: '#FFFFFF' },
+    { letter: 'C', color: '#1FA45B', text: '#FFFFFF' },
+    { letter: 'D', color: '#F2A007', text: '#1B1E3C' }
+  ];
+  const KIND_LABEL = { human: '사람', computer: '컴퓨터', none: '빠짐' };
+  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  const OFFSETS = [[-11, -9], [11, -9], [-11, 11], [11, 11]];
+
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const SPEED = reduceMotion ? 0.35 : 1;
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const boardCache = document.createElement('canvas');
+  boardCache.width = W * SCALE;
+  boardCache.height = H * SCALE;
+
+  const diceEl = document.getElementById('dice');
+  const pipEls = Array.from(diceEl.querySelectorAll('.pip'));
+  const rollBtn = document.getElementById('rollBtn');
+  const turnLabel = document.getElementById('turnLabel');
+  const statusEl = document.getElementById('status');
+  const playersEl = document.getElementById('players');
+  const slotsEl = document.getElementById('slots');
+  const setupError = document.getElementById('setupError');
+  const newGameBtn = document.getElementById('newGameBtn');
+  const logEl = document.getElementById('log');
+
+  // ---------- 칸 위치 ----------
+  function center(n) {
+    const row = Math.floor((n - 1) / 10);
+    let col = (n - 1) % 10;
+    if (row % 2 === 1) col = 9 - col;
+    return { x: col * CELL + CELL / 2, y: (9 - row) * CELL + CELL / 2, row, col };
+  }
+  function startSpot(slot) {
+    return { x: 150 + slot * 54, y: BOARD + STRIP / 2 };
+  }
+
+  const ladders = [];
+  const snakes = [];
+  Object.keys(JUMPS).forEach((key) => {
+    const from = Number(key), to = JUMPS[key];
+    (to > from ? ladders : snakes).push({ from, to });
+  });
+  snakes.forEach((s, i) => {
+    const a = center(s.from), b = center(s.to);
+    s.len = Math.hypot(b.x - a.x, b.y - a.y);
+    s.waves = Math.max(1, Math.round(s.len / 120)) + (i % 2) * 0.5;
+    s.amp = 12 + (i % 3) * 3;
+    s.colors = SNAKE_COLORS[i % SNAKE_COLORS.length];
+  });
+
+  // t=0 머리(출발 칸), t=1 꼬리(도착 칸)
+  function snakePoint(s, t) {
+    const a = center(s.from), b = center(s.to);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const nx = -dy / s.len, ny = dx / s.len;
+    const off = s.amp * Math.sin(t * s.waves * 2 * Math.PI) * Math.sin(Math.PI * t);
+    return { x: a.x + dx * t + nx * off, y: a.y + dy * t + ny * off };
+  }
+
+  // ---------- 고정된 게임판 그리기 (한 번만 그려 두고 재사용) ----------
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    if (c.roundRect) c.roundRect(x, y, w, h, r);
+    else c.rect(x, y, w, h);
+  }
+
+  function drawStar(c, x, y, outer, inner) {
+    c.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? outer : inner;
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    }
+    c.closePath();
+  }
+
+  function drawLadder(c, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, hw = 10, ext = 9;
+    const segs = [];
+    for (const side of [-1, 1]) {
+      segs.push([a.x - ux * ext + nx * hw * side, a.y - uy * ext + ny * hw * side,
+                 b.x + ux * ext + nx * hw * side, b.y + uy * ext + ny * hw * side]);
+    }
+    const rungs = Math.max(2, Math.floor(len / 15));
+    for (let i = 1; i < rungs; i++) {
+      const t = i / rungs, px = a.x + dx * t, py = a.y + dy * t;
+      segs.push([px - nx * hw, py - ny * hw, px + nx * hw, py + ny * hw]);
+    }
+    c.lineCap = 'round';
+    for (const [color, width] of [[INK, 7.5], ['#C98A3A', 4]]) {
+      c.strokeStyle = color;
+      c.lineWidth = width;
+      c.beginPath();
+      for (const [x1, y1, x2, y2] of segs) { c.moveTo(x1, y1); c.lineTo(x2, y2); }
+      c.stroke();
+    }
+  }
+
+  function drawSnake(c, s) {
+    const n = Math.max(30, Math.ceil(s.len / 2.5));
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const p = snakePoint(s, t);
+      pts.push({ x: p.x, y: p.y, r: 8.5 * (1 - t) + 3 * t });
+    }
+    c.fillStyle = INK;
+    for (let i = n; i >= 0; i--) {
+      const p = pts[i];
+      c.beginPath(); c.arc(p.x, p.y, p.r + 2, 0, Math.PI * 2); c.fill();
+    }
+    for (let i = n; i >= 0; i--) {
+      const p = pts[i];
+      c.fillStyle = Math.floor(i / 5) % 2 ? s.colors[1] : s.colors[0];
+      c.beginPath(); c.arc(p.x, p.y, p.r, 0, Math.PI * 2); c.fill();
+    }
+    const head = pts[0], neck = pts[Math.min(4, n)];
+    const angle = Math.atan2(head.y - neck.y, head.x - neck.x);
+    c.save();
+    c.translate(head.x, head.y);
+    c.rotate(angle);
+    c.strokeStyle = '#E63946'; c.lineWidth = 2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(10, 0); c.lineTo(18, 0); c.lineTo(22, -3.5); c.moveTo(18, 0); c.lineTo(22, 3.5); c.stroke();
+    c.fillStyle = s.colors[0]; c.strokeStyle = INK; c.lineWidth = 2;
+    c.beginPath(); c.ellipse(2, 0, 12.5, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    for (const side of [-1, 1]) {
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(5, side * 4.6, 3.3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = INK; c.beginPath(); c.arc(6.2, side * 4.6, 1.7, 0, Math.PI * 2); c.fill();
+    }
+    c.restore();
+  }
+
+  function buildBoard() {
+    const c = boardCache.getContext('2d');
+    c.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    c.clearRect(0, 0, W, H);
+
+    for (let n = 1; n <= GOAL; n++) {
+      const p = center(n);
+      const colored = (p.row + p.col) % 2 === 1;
+      c.fillStyle = n === GOAL ? '#FFC93C' : colored ? TILE_COLORS[(p.row + Math.floor(p.col / 2)) % 4] : PAPER;
+      c.fillRect(p.x - CELL / 2, p.y - CELL / 2, CELL, CELL);
+    }
+    c.strokeStyle = 'rgba(27, 30, 60, 0.35)';
+    c.lineWidth = 1;
+    c.beginPath();
+    for (let i = 1; i < 10; i++) {
+      c.moveTo(i * CELL, 0); c.lineTo(i * CELL, BOARD);
+      c.moveTo(0, i * CELL); c.lineTo(BOARD, i * CELL);
+    }
+    c.stroke();
+
+    // 도착 칸 별
+    const goal = center(GOAL);
+    c.fillStyle = '#E63946'; c.strokeStyle = INK; c.lineWidth = 2;
+    drawStar(c, goal.x, goal.y + 4, 17, 7.5); c.fill(); c.stroke();
+
+    ladders.forEach((l) => drawLadder(c, center(l.from), center(l.to)));
+    snakes.forEach((s) => drawSnake(c, s));
+
+    // 칸 번호 (뱀·사다리 위에 보이도록 마지막에)
+    c.font = '14px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+    c.textBaseline = 'middle';
+    c.textAlign = 'left';
+    for (let n = 1; n <= GOAL; n++) {
+      const p = center(n);
+      const label = String(n);
+      const w = c.measureText(label).width + 7;
+      c.fillStyle = 'rgba(255, 248, 231, 0.92)';
+      roundRect(c, p.x - CELL / 2 + 3, p.y - CELL / 2 + 3, w, 17, 4);
+      c.fill();
+      c.fillStyle = INK;
+      c.fillText(label, p.x - CELL / 2 + 6.5, p.y - CELL / 2 + 12);
+    }
+    c.font = '11px "IBM Plex Sans KR", sans-serif';
+    c.textAlign = 'center';
+    c.fillStyle = INK;
+    c.fillText('도착', goal.x, goal.y + 22);
+
+    c.lineWidth = 4;
+    c.strokeStyle = INK;
+    c.strokeRect(2, 2, BOARD - 4, BOARD - 4);
+
+    // 출발 자리
+    c.fillStyle = INK;
+    c.fillRect(0, BOARD, W, STRIP);
+    c.fillStyle = '#FFC93C';
+    c.font = '24px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+    c.textAlign = 'left';
+    c.fillText('출발', 18, BOARD + STRIP / 2 + 1);
+    c.fillText('▶', 80, BOARD + STRIP / 2 + 1);
+    c.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    c.lineWidth = 2;
+    c.setLineDash([4, 4]);
+    for (let i = 0; i < 4; i++) {
+      const s = startSpot(i);
+      c.beginPath(); c.arc(s.x, s.y, 15, 0, Math.PI * 2); c.stroke();
+    }
+    c.setLineDash([]);
+  }
+
+  // ---------- 게임 상태 ----------
+  let setup = ['human', 'computer', 'none', 'none'];
+  let players = [];
+  let current = 0;
+  let winner = null;
+  let busy = false;
+  let gameId = 0;
+  let logItems = [];
+  let anim = null;
+  let confetti = [];
+  let computerTimer = null;
+
+  // ---------- 움직이는 그림 그리기 ----------
+  function drawToken(x, y, p, active, lift) {
+    const slot = SLOTS[p.slot];
+    const ground = y + (lift || 0);
+    ctx.fillStyle = 'rgba(27, 30, 60, 0.3)';
+    ctx.beginPath(); ctx.ellipse(x, ground + 12, Math.max(6, 11 - (lift || 0) * 0.25), 4, 0, 0, Math.PI * 2); ctx.fill();
+    if (active) {
+      ctx.lineWidth = 6; ctx.strokeStyle = INK;
+      ctx.beginPath(); ctx.arc(x, y, 17, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+    }
+    ctx.fillStyle = slot.color; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 12.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.beginPath(); ctx.arc(x - 4, y - 5, 3.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = slot.text;
+    ctx.font = '15px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(slot.letter, x, y + 1);
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(boardCache, 0, 0);
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+
+    const groups = new Map();
+    players.forEach((p, i) => {
+      if (anim && anim.idx === i) return;
+      const active = i === current && winner === null;
+      if (p.pos === 0) {
+        const s = startSpot(p.slot);
+        drawToken(s.x, s.y, p, active, 0);
+        return;
+      }
+      if (!groups.has(p.pos)) groups.set(p.pos, []);
+      groups.get(p.pos).push(i);
+    });
+    groups.forEach((list, pos) => {
+      const c = center(pos);
+      list.forEach((i, k) => {
+        const off = list.length === 1 ? [0, 3] : OFFSETS[k];
+        drawToken(c.x + off[0], c.y + off[1], players[i], i === current && winner === null, 0);
+      });
+    });
+    if (anim) drawToken(anim.x, anim.y, players[anim.idx], true, anim.lift);
+
+    confetti.forEach((q) => {
+      ctx.save();
+      ctx.translate(q.x, q.y);
+      ctx.rotate(q.rot);
+      ctx.fillStyle = q.color;
+      ctx.fillRect(-q.size / 2, -q.size / 4, q.size, q.size / 2);
+      ctx.restore();
+    });
+  }
+
+  // ---------- 애니메이션 도구 ----------
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+  function tween(ms, step) {
+    return new Promise((res) => {
+      const t0 = performance.now();
+      function frame(now) {
+        const t = ms <= 0 ? 1 : Math.min(1, (now - t0) / ms);
+        step(t);
+        draw();
+        if (t < 1) requestAnimationFrame(frame);
+        else res();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function hop(idx, a, b) {
+    const pa = a === 0 ? startSpot(players[idx].slot) : center(a);
+    const pb = center(b);
+    return tween(170 * SPEED, (t) => {
+      const e = ease(t);
+      const lift = Math.sin(Math.PI * t) * 14;
+      anim = { idx, x: pa.x + (pb.x - pa.x) * e, y: pa.y + (pb.y - pa.y) * e - lift, lift };
+    });
+  }
+
+  function slideLadder(idx, a, b) {
+    const pa = center(a), pb = center(b);
+    return tween(620 * SPEED, (t) => {
+      const e = ease(t);
+      anim = { idx, x: pa.x + (pb.x - pa.x) * e, y: pa.y + (pb.y - pa.y) * e, lift: 0 };
+    });
+  }
+
+  function slideSnake(idx, from) {
+    const s = snakes.find((sn) => sn.from === from);
+    return tween(950 * SPEED, (t) => {
+      const p = snakePoint(s, t * t * (3 - 2 * t));
+      anim = { idx, x: p.x, y: p.y, lift: 0 };
+    });
+  }
+
+  function celebrate(id) {
+    if (reduceMotion) return;
+    const colors = ['#E63946', '#2F6BFF', '#1FA45B', '#F2A007', '#FFFFFF', '#7048E8'];
+    const parts = [];
+    for (let i = 0; i < 140; i++) {
+      parts.push({
+        x0: Math.random() * W, y0: -20 - Math.random() * 220,
+        vx: (Math.random() - 0.5) * 80, vy: 120 + Math.random() * 140,
+        rot0: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 10,
+        size: 6 + Math.random() * 6, color: colors[i % colors.length]
+      });
+    }
+    tween(2600, (t) => {
+      if (id !== gameId) { confetti = []; return; }
+      const s = t * 2.6;
+      confetti = parts.map((p) => ({
+        x: p.x0 + p.vx * s, y: p.y0 + p.vy * s + 40 * s * s,
+        rot: p.rot0 + p.vr * s, size: p.size, color: p.color
+      }));
+    }).then(() => { confetti = []; draw(); });
+  }
+
+  // ---------- 주사위 ----------
+  function rollDie() {
+    try {
+      const a = new Uint32Array(1);
+      crypto.getRandomValues(a);
+      return (a[0] % 6) + 1;
+    } catch (e) {
+      return Math.floor(Math.random() * 6) + 1;
+    }
+  }
+
+  function setFace(n) {
+    diceEl.dataset.face = String(n);
+    diceEl.setAttribute('aria-label', '주사위 ' + n);
+    pipEls.forEach((pip, i) => pip.classList.toggle('on', PIPS[n].includes(i)));
+  }
+
+  async function rollDiceAnim(final) {
+    diceEl.classList.add('rolling');
+    const frames = reduceMotion ? 2 : 9;
+    for (let i = 0; i < frames; i++) {
+      setFace(1 + Math.floor(Math.random() * 6));
+      await sleep(65);
+    }
+    setFace(final);
+    diceEl.classList.remove('rolling');
+    await sleep(220 * SPEED);
+  }
+
+  // ---------- 진행 ----------
+  function makePlayers(cfg) {
+    let humans = 0, computers = 0;
+    const list = [];
+    cfg.forEach((kind, slot) => {
+      if (kind === 'none') return;
+      const name = kind === 'human' ? '플레이어' + (++humans) : '컴퓨터' + (++computers);
+      list.push({ slot, kind, name, pos: 0 });
+    });
+    return list;
+  }
+
+  function pathSteps(from, roll) {
+    const steps = [];
+    let pos = from, dir = 1;
+    for (let i = 0; i < roll; i++) {
+      if (pos === GOAL) dir = -1;
+      pos += dir;
+      steps.push(pos);
+    }
+    return steps;
+  }
+
+  function newGame(cfg) {
+    gameId++;
+    clearTimeout(computerTimer);
+    setup = cfg.slice();
+    players = makePlayers(setup);
+    current = 0;
+    winner = null;
+    busy = false;
+    anim = null;
+    confetti = [];
+    logItems = [];
+    setFace(1);
+    addLog(null, '새 게임을 시작합니다. 참가: ' + players.map((p) => p.name).join(', '));
+    renderSetup();
+    render();
+    scheduleComputer();
+  }
+
+  async function takeTurn() {
+    if (busy || winner !== null || players.length === 0) return;
+    const id = gameId;
+    const idx = current;
+    const p = players[idx];
+    busy = true;
+    render();
+
+    const roll = rollDie();
+    await rollDiceAnim(roll);
+    if (id !== gameId) return;
+
+    const from = p.pos;
+    let prev = from;
+    for (const sq of pathSteps(from, roll)) {
+      await hop(idx, prev, sq);
+      if (id !== gameId) return;
+      p.pos = sq;
+      prev = sq;
+    }
+    anim = null;
+    const landed = p.pos;
+    let msg = '주사위 ' + roll + ' · ' + (from === 0 ? '출발점' : from + '칸') + '에서 ' + landed + '칸으로 갔습니다.';
+    if (from + roll > GOAL) msg += ' (' + GOAL + '칸을 넘어 ' + (from + roll - GOAL) + '칸 되돌아옴)';
+    addLog(p, msg, false);
+    render();
+
+    const dest = JUMPS[landed];
+    if (dest !== undefined) {
+      await sleep(200 * SPEED);
+      if (id !== gameId) return;
+      if (dest > landed) await slideLadder(idx, landed, dest);
+      else await slideSnake(idx, landed);
+      if (id !== gameId) return;
+      p.pos = dest;
+      anim = null;
+      addLog(p, dest > landed ? '사다리를 타고 ' + dest + '칸으로 올라갔습니다!' : '뱀을 만나 ' + dest + '칸으로 미끄러졌습니다!', true);
+    }
+
+    if (p.pos === GOAL) {
+      winner = idx;
+      busy = false;
+      addLog(p, GOAL + '칸에 도착해 이겼습니다!', true);
+      render();
+      celebrate(id);
+      return;
+    }
+    current = (idx + 1) % players.length;
+    busy = false;
+    render();
+    scheduleComputer();
+  }
+
+  function scheduleComputer() {
+    clearTimeout(computerTimer);
+    const p = players[current];
+    if (winner !== null || !p || p.kind !== 'computer') return;
+    const id = gameId;
+    computerTimer = setTimeout(() => { if (id === gameId) takeTurn(); }, 700 * SPEED + 150);
+  }
+
+  // ---------- 화면 갱신 ----------
+  function tokenEl(slot) {
+    const s = SLOTS[slot];
+    const span = document.createElement('span');
+    span.className = 'token';
+    span.style.background = s.color;
+    span.style.color = s.text;
+    span.textContent = s.letter;
+    span.setAttribute('aria-hidden', 'true');
+    return span;
+  }
+
+  function addLog(player, text, strong) {
+    logItems.unshift({ slot: player ? player.slot : null, name: player ? player.name : '', text, strong: !!strong });
+    if (logItems.length > 40) logItems.length = 40;
+    renderLog();
+  }
+
+  function renderLog() {
+    logEl.replaceChildren(...logItems.map((item) => {
+      const li = document.createElement('li');
+      if (item.strong) li.className = 'strong';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = item.slot === null ? 'transparent' : SLOTS[item.slot].color;
+      const txt = document.createElement('span');
+      txt.textContent = (item.name ? item.name + ': ' : '') + item.text;
+      li.append(dot, txt);
+      return li;
+    }));
+  }
+
+  function renderPlayers() {
+    playersEl.replaceChildren(...players.map((p, i) => {
+      const li = document.createElement('li');
+      li.className = 'player' + (i === current && winner === null ? ' is-turn' : '') + (winner === i ? ' is-winner' : '');
+      const name = document.createElement('span');
+      name.className = 'pname';
+      name.textContent = p.name + (winner === i ? ' 🏆' : '');
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = KIND_LABEL[p.kind];
+      const pos = document.createElement('span');
+      pos.className = 'pos';
+      pos.textContent = p.pos === 0 ? '출발 전' : p.pos + '칸';
+      li.append(tokenEl(p.slot), name, chip, pos);
+      return li;
+    }));
+  }
+
+  function renderTurn() {
+    turnLabel.replaceChildren();
+    if (players.length === 0) return;
+    if (winner !== null) {
+      const w = players[winner];
+      turnLabel.append(tokenEl(w.slot), document.createTextNode(w.name + ' 승리!'));
+      statusEl.textContent = '같은 참가자로 한 판 더 하려면 버튼을 누르세요.';
+      rollBtn.textContent = '다시 하기';
+      rollBtn.disabled = false;
+      return;
+    }
+    const p = players[current];
+    turnLabel.append(tokenEl(p.slot), document.createTextNode(p.name + ' 차례'));
+    rollBtn.textContent = '주사위 굴리기';
+    if (p.kind === 'human') {
+      rollBtn.disabled = busy;
+      statusEl.textContent = busy ? '말이 움직이는 중입니다.' : '버튼이나 스페이스 키로 주사위를 굴리세요.';
+    } else {
+      rollBtn.disabled = true;
+      statusEl.textContent = '컴퓨터가 주사위를 굴리고 있습니다.';
+    }
+  }
+
+  function render() {
+    renderPlayers();
+    renderTurn();
+    draw();
+  }
+
+  // ---------- 참가자 설정 ----------
+  const slotSelects = SLOTS.map((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'slot';
+    const label = document.createElement('label');
+    label.htmlFor = 'slot' + i;
+    label.textContent = s.letter + ' 말';
+    const select = document.createElement('select');
+    select.id = 'slot' + i;
+    ['human', 'computer', 'none'].forEach((kind) => {
+      const opt = document.createElement('option');
+      opt.value = kind;
+      opt.textContent = KIND_LABEL[kind];
+      select.append(opt);
+    });
+    row.append(tokenEl(i), label, select);
+    slotsEl.append(row);
+    return select;
+  });
+
+  function renderSetup() {
+    slotSelects.forEach((sel, i) => { sel.value = setup[i] || 'none'; });
+  }
+
+  newGameBtn.addEventListener('click', () => {
+    const cfg = slotSelects.map((s) => s.value);
+    if (cfg.filter((k) => k !== 'none').length < 2) {
+      setupError.textContent = '참가자를 2명 이상 골라 주세요. 지금은 ' + cfg.filter((k) => k !== 'none').length + '명입니다.';
+      setupError.hidden = false;
+      return;
+    }
+    setupError.hidden = true;
+    newGame(cfg);
+  });
+
+  rollBtn.addEventListener('click', () => {
+    if (winner !== null) newGame(setup);
+    else takeTurn();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== ' ' && e.code !== 'Space') return;
+    const tag = e.target && e.target.tagName ? e.target.tagName : '';
+    if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'SUMMARY'].includes(tag)) return;
+    e.preventDefault();
+    if (!rollBtn.disabled) rollBtn.click();
+  });
+
+  // ---------- 시작 ----------
+  function snapshot() {
+    return {
+      setup: setup.slice(),
+      players: players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos })),
+      current, winner, logItems: logItems.slice()
+    };
+  }
+
+  function start(data) {
+    try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(snapshot); } catch (e) { /* 미리보기 밖에서는 없음 */ }
+    buildBoard();
+    const ok = data && Array.isArray(data.setup) && Array.isArray(data.players) && data.players.length >= 2;
+    if (ok) {
+      gameId++;
+      setup = data.setup;
+      players = data.players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos }));
+      current = Number(data.current) || 0;
+      winner = data.winner === null || data.winner === undefined ? null : Number(data.winner);
+      logItems = Array.isArray(data.logItems) ? data.logItems : [];
+      busy = false;
+      renderSetup();
+      renderLog();
+      render();
+      scheduleComputer();
+    } else {
+      newGame(setup);
+    }
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('14px "Black Han Sans"'),
+        document.fonts.load('11px "IBM Plex Sans KR"')
+      ]).then(() => { buildBoard(); draw(); }).catch(() => { /* 글꼴을 못 받아도 기본 글꼴로 계속 */ });
+    }
+  }
+
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.ready) hot.ready(start);
+  else start((hot && hot.data) || {});
+})();
+</script>
+</body> <!--wrap-->
+</html> <!--wrap-->
