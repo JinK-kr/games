@@ -15,11 +15,30 @@ use snake_dice_game_v1::render;
 const COMPUTER_DELAY: Duration = Duration::from_millis(700);
 
 fn main() -> ExitCode {
-    print_intro();
     let stdin = io::stdin();
     let mut input = stdin.lock();
+    let code = run(&mut input);
+    wait_before_close(&mut input);
+    code
+}
 
-    let Some((humans, computers)) = ask_player_counts(&mut input) else {
+/// exe를 더블클릭해 실행하면 끝나자마자 창이 닫히므로, Enter를 누를 때까지 기다립니다.
+fn wait_before_close(input: &mut impl BufRead) {
+    println!();
+    print!("Enter를 누르면 창이 닫힙니다...");
+    if let Err(e) = io::stdout().flush() {
+        eprintln!("화면에 안내 문구를 내보내지 못했습니다: {e}");
+    }
+    let mut line = String::new();
+    if let Err(e) = input.read_line(&mut line) {
+        eprintln!("입력을 읽지 못해 바로 닫습니다: {e}");
+    }
+}
+
+/// 게임을 준비하고 끝날 때까지 진행합니다.
+fn run(input: &mut impl BufRead) -> ExitCode {
+    print_intro();
+    let Some((humans, computers)) = ask_player_counts(input) else {
         return ExitCode::SUCCESS;
     };
     let board = match Board::standard() {
@@ -44,7 +63,7 @@ fn main() -> ExitCode {
         }
     };
     let mut dice = Dice::new(seed);
-    play(&mut game, &mut dice, &mut input)
+    play(&mut game, &mut dice, input)
 }
 
 fn print_intro() {
