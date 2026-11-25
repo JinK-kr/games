@@ -10,7 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전(2D 캔버스). HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
-| `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 시제품(three.js + cannon-es 물리). 3D 게임판, 체스 폰 말, 물리 주사위, 사다리·뱀만 있음. 이솝 우화, 함정 칸, 칸 그림은 아직 2D 버전에만 있음 |
+| `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
+
+**2D와 3D의 게임 데이터는 복사본입니다.** `JUMPS`, `TRAPS`, `FABLES`, `LADDER_STORY`, `SNAKE_STORY`, `DEST_NOTES`가 두 파일에 똑같이 들어 있습니다. 한쪽을 고치면 다른 쪽도 같이 고칩니다.
 
 **웹 버전이 주력이고, Rust 버전은 더 이상 관리하지 않습니다 (사용자 지시).** 기능과 규칙은 웹 버전에서만 바꾸고, Rust 버전과 맞추지 않습니다. 사용자가 따로 요청할 때만 Rust 버전을 건드립니다. 두 버전은 사다리·뱀 위치표(`JUMPS`)만 같고 나머지 규칙은 이미 다릅니다.
 
@@ -151,7 +153,10 @@ claude.ai 페이지 주소는 https://claude.ai/artifact/ACpCMDdEyBg4n12fTLXcx2 
 ### 구조
 
 - **좌표:** 칸 한 변이 1이고 판 가운데가 원점입니다. `tileXZ(n)`은 1번 줄을 +z(카메라 쪽)에 둡니다. 출발 줄은 z = 5.75입니다.
-- **게임판 그림:** 판 무늬와 칸 번호는 캔버스에 그린 뒤 평면에 붙입니다(`makeBoardTexture`). 텍스처의 위쪽 줄이 먼 쪽(−z), 즉 91~100칸입니다.
+- **게임판 그림:** 판 무늬, 함정 줄무늬, 그림 스티커, 함정 표시, 칸 번호는 2048px 캔버스에 그린 뒤 평면에 붙입니다(`makeBoardTexture`). 2D 버전의 크기 값(칸 60px 기준)에 `u = cell / 60`을 곱해 그대로 씁니다. 텍스처의 위쪽 줄이 먼 쪽(−z), 즉 91~100칸입니다. 이모지 글꼴은 텍스처를 그리기 전에 `document.fonts.load(..., ALL_ART)`로 미리 받습니다.
+- **칸 효과:** `addFx(n, kind, color)`가 빛 번짐 평면, 네모 테두리, 별가루 스프라이트를 만듭니다. `updateFx`가 매 프레임 움직이고, 끝나면 재질(material)을 정리합니다.
+- **한 차례 진행:** 2D 버전의 `takeTurn` 흐름(주사위 → `walk` → 함정/사다리·뱀/이야기 반복문, 기다릴 때마다 `gameId` 확인)과 같습니다.
+- **상태 이어 가기:** `boot(data)`와 `snapshot()`으로 `window.claude.hot` 상태를 이어 갑니다. 저장 항목은 mode, players, current, winner, logItems, readScenes입니다.
 - **사다리:** 아치 모양 곡선(`QuadraticBezierCurve3`)으로 만듭니다. 말은 그 곡선을 따라 오릅니다.
 - **뱀:** `TubeGeometry`를 고리 단위로 줄여 굵기를 바꿉니다(꼬리 → 머리로 굵어짐). 말은 꼬리에서 머리로 같은 곡선을 따라 미끄러집니다.
 - **주사위:** 결과는 물리 엔진이 정합니다.
@@ -170,6 +175,9 @@ claude.ai 페이지 주소는 https://claude.ai/artifact/ACpCMDdEyBg4n12fTLXcx2 
 2. Playwright의 `page.route('https://cdn.jsdelivr.net/npm/**')`로 요청을 가로채 그 파일로 응답합니다.
 3. WebGL은 `chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })`로 켭니다.
 4. 준비 완료는 `window.__snake3dReady === true`로 기다립니다.
+5. 원하는 장면을 만듭니다.
+   - **말 위치:** `addInitScript`로 `window.claude = { hot: { data: { mode: 'two', players: [...], current, winner, logItems, readScenes } } }`를 넣으면 그 위치에서 시작합니다.
+   - **주사위 눈 고정:** 물리 주사위라 결과를 정할 수 없으므로, `window.__snake3dTestRoll = 4`처럼 넣으면 그 눈으로 처리합니다. 화면의 주사위 윗면과는 다를 수 있습니다. 시험 전용이며 평소에는 비어 있습니다.
 
 참고:
 - 소프트웨어로 그리기 때문에 느립니다. 화면 캡처 중에도 시간이 흐르므로, 캡처는 정확한 순간을 담지 못할 수 있습니다.
