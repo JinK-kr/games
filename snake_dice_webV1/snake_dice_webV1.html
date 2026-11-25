@@ -28,6 +28,13 @@
   --dice-edge: #1B1E3C;
   --dice-pip: #1B1E3C;
   --dice-one: #D62839;
+  /* 면마다 눈 색이 다른 주사위 (1 빨강, 2 노랑, 3 주황, 4 초록, 5 파랑, 6 남색) */
+  --pip-1: #D7263D;
+  --pip-2: #F2B705;
+  --pip-3: #F77F00;
+  --pip-4: #2BA84A;
+  --pip-5: #1E88E5;
+  --pip-6: #1B1E3C;
   /* 게임판 위에 뜨는 메시지 (게임판 색에 맞춰 두 화면 모드 모두 같은 색) */
   --burst-edge: #1B1E3C;
   --up-bg: #FFE14D;
@@ -41,6 +48,9 @@
   --story-bg: #DDF4FF;
   --story-ink: #1B1E3C;
   --story-title: #1D5FA8;
+  --trap-bg: #FF8A3D;
+  --trap-ink: #1B1E3C;
+  --trap-title: #FFFFFF;
   --font-emoji: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   --font-display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
@@ -128,7 +138,7 @@ body {
 }
 .tagline {
   margin: 0;
-  max-width: 28em;
+  max-width: 30em;
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -177,7 +187,123 @@ body {
   font-size: 0.85rem;
 }
 
-/* 사다리·뱀 메시지 (게임판 가운데) */
+/* 게임판 가운데에서 구르는 입체 주사위 */
+.dice3d {
+  --d: clamp(64px, 14vw, 104px);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.dice3d::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: radial-gradient(circle, rgba(27, 30, 60, 0.3), transparent 62%);
+  animation: fade-in 0.25s ease-out both;
+}
+.dice3d-move { position: relative; display: grid; justify-items: center; }
+.dice3d-hop { width: var(--d); height: var(--d); }
+.dice3d.is-tossing .dice3d-move { animation: roll-in 1.15s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+.dice3d.is-tossing .dice3d-hop { animation: hop 1.15s linear both; }
+.dice3d.is-tossing .dice3d-shadow { animation: hop-shadow 1.15s linear both; }
+.dice3d-scene { width: 100%; height: 100%; perspective: 700px; }
+.dice3d-tilt {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(-16deg) rotateY(20deg);
+}
+.cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+.cube-core { position: absolute; inset: 3px; background: #D5DAE6; }
+.cube-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 14%;
+  background: radial-gradient(circle at 28% 22%, #FFFFFF 0%, #F6F7FA 45%, #E3E7EF 100%);
+  border: 1.5px solid rgba(27, 30, 60, 0.22);
+  border-radius: 22%;
+  box-shadow: inset -6px -6px 10px rgba(27, 30, 60, 0.13), inset 4px 4px 8px rgba(255, 255, 255, 0.95);
+}
+.cube-face .pip { width: 70%; height: auto; aspect-ratio: 1; }
+.cube-face .pip.on {
+  background: radial-gradient(circle at 60% 65%, transparent 55%, rgba(0, 0, 0, 0.28) 100%), var(--pip);
+  box-shadow: inset 2px 2px 3px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.cube-face.f1 .pip.on { width: 92%; }
+.cube-face.f1 { --pip: var(--pip-1); }
+.cube-face.f2 { --pip: var(--pip-2); }
+.cube-face.f3 { --pip: var(--pip-3); }
+.cube-face.f4 { --pip: var(--pip-4); }
+.cube-face.f5 { --pip: var(--pip-5); }
+.cube-face.f6 { --pip: var(--pip-6); }
+.f1 { transform: rotateY(0deg) translateZ(calc(var(--d) / 2)); }
+.f6 { transform: rotateY(180deg) translateZ(calc(var(--d) / 2)); }
+.f3 { transform: rotateY(90deg) translateZ(calc(var(--d) / 2)); }
+.f4 { transform: rotateY(-90deg) translateZ(calc(var(--d) / 2)); }
+.f5 { transform: rotateX(90deg) translateZ(calc(var(--d) / 2)); }
+.f2 { transform: rotateX(-90deg) translateZ(calc(var(--d) / 2)); }
+.c1 { transform: rotateY(0deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.c6 { transform: rotateY(180deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.c3 { transform: rotateY(90deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.c4 { transform: rotateY(-90deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.c5 { transform: rotateX(90deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.c2 { transform: rotateX(-90deg) translateZ(calc(var(--d) / 2 - 4px)); }
+.dice3d-shadow {
+  width: calc(var(--d) * 0.95);
+  height: calc(var(--d) * 0.16);
+  margin-top: calc(var(--d) * 0.1);
+  border-radius: 50%;
+  background: rgba(27, 30, 60, 0.38);
+  filter: blur(3px);
+}
+.dice3d-result {
+  position: relative;
+  margin: 0;
+  padding: 3px 16px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: #1B1E3C;
+  background: #FFE14D;
+  border: 3px solid #1B1E3C;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #1B1E3C;
+  visibility: hidden;
+}
+.dice3d.is-landed .dice3d-result { visibility: visible; animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.dice3d.is-out { animation: fade-out 0.38s ease-in forwards; }
+/* 오른쪽 아래에서 던져져 가운데로 굴러옵니다 */
+@keyframes roll-in {
+  from { transform: translate(150px, 40px); }
+  to { transform: translate(0, 0); }
+}
+/* 바닥에 세 번 튕깁니다 (35%, 68%, 90% 지점에서 바닥에 닿음) */
+@keyframes hop {
+  0% { transform: translateY(-130px) scale(0.75); opacity: 0; animation-timing-function: ease-in; }
+  8% { opacity: 1; }
+  35% { transform: translateY(0) scale(1); animation-timing-function: ease-out; }
+  52% { transform: translateY(-42px); animation-timing-function: ease-in; }
+  68% { transform: translateY(0); animation-timing-function: ease-out; }
+  80% { transform: translateY(-12px); animation-timing-function: ease-in; }
+  90%, 100% { transform: translateY(0); }
+}
+@keyframes hop-shadow {
+  0% { transform: scale(0.4); opacity: 0.1; animation-timing-function: ease-in; }
+  35% { transform: scale(1); opacity: 1; animation-timing-function: ease-out; }
+  52% { transform: scale(0.72); opacity: 0.6; animation-timing-function: ease-in; }
+  68% { transform: scale(1); opacity: 1; animation-timing-function: ease-out; }
+  80% { transform: scale(0.9); opacity: 0.85; animation-timing-function: ease-in; }
+  90%, 100% { transform: scale(1); opacity: 1; }
+}
+
+/* 사다리·뱀·이야기·함정 메시지 (게임판 가운데) */
 .burst {
   position: absolute;
   inset: 0;
@@ -215,7 +341,7 @@ body {
   display: grid;
   justify-items: center;
   gap: 2px;
-  padding: 18px 28px 20px;
+  padding: 16px 24px 18px;
   text-align: center;
   border: 3px solid var(--burst-edge);
   border-radius: 20px;
@@ -236,7 +362,11 @@ body {
   color: var(--story-ink);
   animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
-.burst.is-story .burst-title { color: var(--story-title); }
+.burst.is-trap .burst-card {
+  background: var(--trap-bg);
+  color: var(--trap-ink);
+  animation: trap-in 0.6s ease-out both;
+}
 .burst-art {
   margin: 0;
   display: flex;
@@ -247,18 +377,30 @@ body {
   line-height: 1.15;
 }
 .burst-art .arrow { font-family: var(--font-display); font-size: 0.6em; }
-.burst-kicker { margin: 4px 0 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; }
-.burst-story { margin: 6px 0 0; max-width: 26em; font-weight: 600; text-wrap: balance; }
+.trap-tag {
+  padding: 0 0.35em;
+  font-family: var(--font-display);
+  font-size: 0.85em;
+  color: #FFFFFF;
+  border: 3px solid var(--burst-edge);
+  border-radius: 14px;
+}
+.trap-tag.is-fw { background: #2B9348; }
+.trap-tag.is-bw { background: #E03131; }
+.burst-kicker { margin: 4px 0 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em; }
 .burst-title {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(2rem, 7vw, 3.3rem);
+  font-size: clamp(1.9rem, 6.5vw, 3.1rem);
   line-height: 1.1;
   text-wrap: balance;
 }
 .burst.is-ladder .burst-title { color: var(--up-title); text-shadow: 3px 3px 0 var(--burst-edge); }
 .burst.is-snake .burst-title { color: var(--down-title); }
+.burst.is-story .burst-title { color: var(--story-title); }
+.burst.is-trap .burst-title { color: var(--trap-title); text-shadow: 3px 3px 0 var(--burst-edge); }
+.burst-story { margin: 6px 0 0; max-width: 26em; font-weight: 600; text-wrap: balance; }
 .burst-sub { margin: 6px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .burst.is-out .burst-card,
 .burst.is-out::before { animation: fade-out 0.38s ease-in forwards; }
@@ -273,92 +415,16 @@ body {
   70% { transform: translateY(-4px) rotate(-2deg); }
   100% { transform: translateY(2px) rotate(1.5deg); }
 }
+@keyframes trap-in {
+  0% { transform: scale(0.5) rotate(10deg); opacity: 0; }
+  45% { transform: scale(1.1) rotate(-6deg); opacity: 1; }
+  65% { transform: rotate(4deg); }
+  82% { transform: rotate(-2deg); }
+  100% { transform: rotate(0) scale(1); }
+}
 @keyframes fade-out { to { opacity: 0; transform: scale(0.85); } }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes spin { to { rotate: 360deg; } }
-
-/* 게임판 가운데에서 구르는 입체 주사위 */
-.dice3d {
-  --d: clamp(64px, 14vw, 104px);
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  pointer-events: none;
-}
-.dice3d::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 6px;
-  background: radial-gradient(circle, rgba(27, 30, 60, 0.3), transparent 62%);
-  animation: fade-in 0.25s ease-out both;
-}
-.dice3d-toss { position: relative; width: var(--d); height: var(--d); }
-.dice3d.is-tossing .dice3d-toss { animation: toss 1.15s cubic-bezier(0.3, 0.7, 0.3, 1) both; }
-.dice3d-scene { width: 100%; height: 100%; perspective: 700px; }
-.dice3d-tilt {
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transform: rotateX(-16deg) rotateY(20deg);
-}
-.cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
-.cube-face {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  padding: 14%;
-  background: radial-gradient(circle at 30% 25%, #FFFFFF, #E9EDF7 75%);
-  border: 3px solid #1B1E3C;
-  border-radius: 16%;
-  box-shadow: inset -5px -5px 0 rgba(27, 30, 60, 0.1);
-}
-.cube-face .pip { width: 72%; height: auto; aspect-ratio: 1; }
-.cube-face .pip.on { background: #1B1E3C; box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.3); }
-.cube-face.f1 .pip.on { width: 115%; background: #D62839; }
-.f1 { transform: rotateY(0deg) translateZ(calc(var(--d) / 2)); }
-.f6 { transform: rotateY(180deg) translateZ(calc(var(--d) / 2)); }
-.f3 { transform: rotateY(90deg) translateZ(calc(var(--d) / 2)); }
-.f4 { transform: rotateY(-90deg) translateZ(calc(var(--d) / 2)); }
-.f5 { transform: rotateX(90deg) translateZ(calc(var(--d) / 2)); }
-.f2 { transform: rotateX(-90deg) translateZ(calc(var(--d) / 2)); }
-.dice3d-shadow {
-  position: relative;
-  width: calc(var(--d) * 0.95);
-  height: calc(var(--d) * 0.16);
-  margin-top: calc(var(--d) * 0.08);
-  border-radius: 50%;
-  background: rgba(27, 30, 60, 0.35);
-  filter: blur(3px);
-}
-.dice3d-result {
-  position: relative;
-  margin: 0;
-  padding: 3px 16px;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  color: #1B1E3C;
-  background: #FFE14D;
-  border: 3px solid #1B1E3C;
-  border-radius: 999px;
-  box-shadow: 3px 3px 0 #1B1E3C;
-  visibility: hidden;
-}
-.dice3d.is-landed .dice3d-result { visibility: visible; animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-.dice3d.is-out { animation: fade-out 0.38s ease-in forwards; }
-@keyframes toss {
-  0% { transform: translateY(-150px) scale(0.4); opacity: 0; }
-  15% { opacity: 1; }
-  55% { transform: translateY(10px) scale(1.08); }
-  72% { transform: translateY(-14px) scale(1); }
-  86% { transform: translateY(3px); }
-  100% { transform: translateY(0) scale(1); }
-}
 
 /* 승리 축하 창 */
 .win {
@@ -413,8 +479,10 @@ body {
   display: grid;
   gap: 12px;
 }
+.turn-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .turn-label {
   margin: 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -423,6 +491,19 @@ body {
   font-size: 1.6rem;
   line-height: 1.2;
 }
+.sound-btn {
+  flex: none;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  color: var(--ink);
+  background: var(--chip);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sound-btn[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
 .dice-row { display: flex; align-items: center; gap: 16px; }
 .dice {
   flex: none;
@@ -438,8 +519,14 @@ body {
   box-shadow: inset -5px -5px 0 rgba(27, 30, 60, 0.12);
 }
 .pip { width: 13px; height: 13px; border-radius: 50%; place-self: center; }
-.pip.on { background: var(--dice-pip); }
-.dice[data-face="1"] .pip.on { background: var(--dice-one); width: 22px; height: 22px; }
+.pip.on { background: var(--pip, var(--dice-pip)); }
+.dice[data-face="1"] { --pip: var(--pip-1); }
+.dice[data-face="2"] { --pip: var(--pip-2); }
+.dice[data-face="3"] { --pip: var(--pip-3); }
+.dice[data-face="4"] { --pip: var(--pip-4); }
+.dice[data-face="5"] { --pip: var(--pip-5); }
+.dice[data-face="6"] { --pip: var(--pip-6); }
+.dice[data-face="1"] .pip.on { width: 20px; height: 20px; }
 .dice.rolling { animation: shake 0.13s linear infinite; }
 @keyframes shake {
   0% { transform: rotate(-9deg) translateY(-2px); }
@@ -470,8 +557,7 @@ body {
 .token { flex: none; display: block; width: 22px; height: 31px; overflow: visible; }
 .token-letter { font-family: var(--font-display); }
 .turn-label .token { width: 24px; height: 34px; }
-.win-card .token,
-.burst-card .token { width: 40px; height: 56px; }
+.win-card .token { width: 40px; height: 56px; }
 
 /* 참가자 목록 */
 .players { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -503,7 +589,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* 접히는 칸: 참가자 바꾸기, 놀이법 */
+/* 접히는 칸: 이야기책, 참가자 바꾸기, 놀이법 */
 details {
   background: var(--surface);
   border: 2px solid var(--line);
@@ -516,6 +602,14 @@ summary {
   font-weight: 700;
 }
 details[open] { padding-bottom: 14px; }
+.book-count { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.book-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9rem; }
+.book-list li { display: grid; grid-template-columns: 1.8em minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.book-no { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.book-list li.is-done .book-name { font-weight: 700; }
+.book-dots { display: flex; gap: 4px; }
+.book-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--line); }
+.book-dot.is-read { background: var(--accent); border-color: var(--accent); }
 .slots { display: grid; gap: 8px; margin-bottom: 12px; }
 .slot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .slot label { font-weight: 600; }
@@ -564,7 +658,9 @@ select {
   .burst::before,
   .dice3d,
   .dice3d::before,
-  .dice3d-toss,
+  .dice3d-move,
+  .dice3d-hop,
+  .dice3d-shadow,
   .dice3d-result,
   .win-card { animation: none !important; }
   .roll { transition: none; }
@@ -576,10 +672,10 @@ select {
 <header class="band">
   <div class="band-inner">
     <div>
-      <p class="eyebrow">도토리 마을의 하루 · 주사위를 굴려 100칸까지</p>
+      <p class="eyebrow">이솝 우화 여행 · 주사위를 굴려 100칸까지</p>
       <h1 class="title">뱀주사위놀이</h1>
     </div>
-    <p class="tagline">착한 일을 하면 사다리를 타고 올라가고, 실수하면 뱀 꼬리에서 머리까지 미끄러집니다. 100칸에 먼저 도착하면 이깁니다.</p>
+    <p class="tagline">이솝 우화 열 편을 따라 100칸까지 올라가요. 착한 일은 사다리, 실수는 뱀 꼬리, 주황 줄무늬 칸은 함정입니다.</p>
   </div>
 </header>
 
@@ -588,12 +684,14 @@ select {
     <div class="board-wrap" id="boardWrap">
       <canvas id="board" width="1200" height="1320">게임판 그림입니다. 각 말의 위치는 참가자 목록에서 볼 수 있습니다.</canvas>
       <div class="dice3d" id="dice3d" aria-hidden="true" hidden>
-        <div class="dice3d-toss">
-          <div class="dice3d-scene">
-            <div class="dice3d-tilt"><div class="cube" id="cube"></div></div>
+        <div class="dice3d-move">
+          <div class="dice3d-hop">
+            <div class="dice3d-scene">
+              <div class="dice3d-tilt"><div class="cube" id="cube"></div></div>
+            </div>
           </div>
+          <div class="dice3d-shadow"></div>
         </div>
-        <div class="dice3d-shadow"></div>
         <p class="dice3d-result" id="dice3dResult"></p>
       </div>
       <div class="burst" id="burst" role="status" aria-live="polite" hidden>
@@ -620,15 +718,18 @@ select {
     </div>
     <p class="legend">
       <span>사다리 7개: 착한 일, 올라감</span>
-      <span>뱀 8개: 꼬리를 밟으면 머리로 내려감</span>
-      <span>그림 칸에 멈추면 이야기가 나옴</span>
-      <span>주사위 눈이 남아도 100칸에 닿으면 도착</span>
+      <span>뱀 8개: 실수, 꼬리를 밟으면 머리로 내려감</span>
+      <span>주황 줄무늬 칸 10개: 함정(+2 앞으로, −3 뒤로)</span>
+      <span>번호 스티커 칸: 이솝 우화 장면</span>
     </p>
   </section>
 
   <aside class="panel">
     <section class="turn" aria-live="polite">
-      <h2 class="turn-label" id="turnLabel">게임 준비 중</h2>
+      <div class="turn-head">
+        <h2 class="turn-label" id="turnLabel">게임 준비 중</h2>
+        <button type="button" class="sound-btn" id="soundBtn" aria-pressed="true">♪ 소리</button>
+      </div>
       <div class="dice-row">
         <div class="dice" id="dice" data-face="1" role="img" aria-label="주사위 1">
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
@@ -642,6 +743,11 @@ select {
 
     <ul class="players" id="players" aria-label="참가자"></ul>
 
+    <details id="bookBox" open>
+      <summary>이솝 우화 이야기책 <span class="book-count" id="bookCount"></span></summary>
+      <ol class="book-list" id="bookList"></ol>
+    </details>
+
     <details id="setupBox">
       <summary>참가자 바꾸기</summary>
       <div class="slots" id="slots"></div>
@@ -653,9 +759,10 @@ select {
       <summary>놀이법</summary>
       <ol class="rules">
         <li>차례대로 주사위를 굴려 나온 수만큼 앞으로 갑니다.</li>
-        <li>사다리 아래 칸에 멈추면 사다리를 타고 올라갑니다. 착한 일을 한 칸입니다.</li>
-        <li>뱀 꼬리 칸에 멈추면 뱀을 타고 머리 칸까지 미끄러집니다. 실수를 한 칸입니다.</li>
-        <li>그림이 있는 칸에 멈추면 도토리 마을 이야기가 나옵니다.</li>
+        <li>사다리 아래 칸(착한 일)에 멈추면 사다리를 타고 올라갑니다.</li>
+        <li>뱀 꼬리 칸(실수)에 멈추면 뱀을 타고 머리 칸까지 미끄러집니다.</li>
+        <li>주황 줄무늬 함정 칸에 멈추면 적힌 대로 앞으로 2칸 또는 뒤로 3칸 움직입니다. 움직인 곳이 뱀 꼬리나 사다리면 연달아 이동합니다.</li>
+        <li>번호 스티커 칸에 멈추면 이솝 우화 장면이 나오고 이야기책에 모입니다.</li>
         <li>100칸에 먼저 도착하면 이깁니다. 주사위 눈이 남아도 100칸에 닿으면 바로 도착합니다.</li>
       </ol>
     </details>
@@ -671,11 +778,11 @@ select {
 (() => {
   'use strict';
 
-  // ---------- 게임 규칙 (Rust 버전과 같은 배치) ----------
+  // ---------- 게임 규칙 (사다리·뱀 위치는 Rust 버전과 같음) ----------
   const GOAL = 100;
   const JUMPS = {
-    4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92,          // 사다리
-    27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 99: 41    // 뱀
+    4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92,          // 사다리 (아래 → 위)
+    27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 99: 41    // 뱀 (꼬리 → 머리)
   };
 
   // ---------- 그림 크기 (논리 좌표, 2배 해상도로 그림) ----------
@@ -699,70 +806,134 @@ select {
   const PAIR_SPOTS = [[-12, 24], [12, 24]];
   const GROUP_SPOTS = [[-12, 4], [12, 4], [-12, 27], [12, 27]];
 
-  // 칸 효과 종류: 지나가는 칸, 멈춘 칸, 사다리 도착, 뱀 도착
+  // 칸 효과 종류
   const RAINBOW = ['#FF5A67', '#FFC93C', '#5BE37D', '#4DC3FF', '#B18CFF', '#FF8FD1'];
   const GLOOM = ['#7048E8', '#4C3BB3', '#9C8CF0', '#5A5F85'];
+  const EMBER = ['#FF7A1A', '#FFC93C', '#FFFFFF', '#E03131'];
   const FX = {
-    step: { dur: 650, count: 8, reach: 30, size: 4.5, ring: false, colors: RAINBOW },
-    land: { dur: 950, count: 12, reach: 44, size: 5.5, ring: true, colors: RAINBOW },
-    up: { dur: 1300, count: 18, reach: 62, size: 7, ring: true, colors: RAINBOW },
-    down: { dur: 1100, count: 10, reach: 40, size: 5, ring: true, colors: GLOOM }
+    step: { dur: 650, count: 8, reach: 30, size: 4.5, ring: false, colors: RAINBOW, edge: '#FFE14D' },
+    land: { dur: 950, count: 12, reach: 44, size: 5.5, ring: true, colors: RAINBOW, edge: '#FFE14D' },
+    up: { dur: 1300, count: 18, reach: 62, size: 7, ring: true, colors: RAINBOW, edge: '#FFE14D' },
+    down: { dur: 1100, count: 10, reach: 40, size: 5, ring: true, colors: GLOOM, edge: '#9C8CF0' },
+    trap: { dur: 950, count: 12, reach: 44, size: 5.5, ring: true, colors: EMBER, edge: '#FF7A1A' }
   };
 
   const LADDER_TITLES = ['야호! 신난다!', '껑충! 대박이다!', '쭉쭉 올라간다!', '오예! 지름길 발견!'];
   const SNAKE_TITLES = ['앗, 이럴 수가…', '으악! 미끄러졌다', '아이고, 아까워라', '흑흑, 뱀이다…'];
 
-  // ---------- 도토리 마을의 하루 (이야기와 칸 그림) ----------
-  // 사다리: 착한 일을 하면 올라갑니다. 키는 사다리 아래 칸입니다.
+  // ---------- 이솝 우화 여행 (한 줄에 한 편, 장면 3개씩) ----------
+  const FABLES = [
+    { name: '토끼와 거북이', scenes: [
+      { sq: 2, art: '🐇', title: '달리기 시합', text: '발 빠른 토끼가 느림보 거북이를 놀리며 달리기 시합을 하자고 했어요.' },
+      { sq: 6, art: '💤', title: '토끼의 낮잠', text: '저만치 앞선 토끼는 "조금 자도 되겠지" 하고 나무 밑에서 낮잠을 잤어요.' },
+      { sq: 9, art: '🏆', title: '꾸준함의 승리', text: '그동안 거북이는 쉬지 않고 걸어 먼저 결승선에 닿았어요. 꾸준함이 이겨요!' }
+    ] },
+    { name: '개미와 베짱이', scenes: [
+      { sq: 14, art: '🐜', title: '부지런한 개미', text: '여름 내내 개미는 땀 흘리며 먹이를 차곡차곡 모았어요.' },
+      { sq: 17, art: '🎻', title: '노래하는 베짱이', text: '베짱이는 나무 그늘에서 "겨울은 아직 멀었어" 하며 노래만 불렀어요.' },
+      { sq: 19, art: '❄️', title: '겨울이 왔어요', text: '눈 내리는 겨울, 개미네 집은 따뜻했고 베짱이는 배가 고팠어요. 미리 준비해요!' }
+    ] },
+    { name: '양치기 소년', scenes: [
+      { sq: 22, art: '🐑', title: '심심한 양치기', text: '양을 돌보던 소년이 심심해서 "늑대다!" 하고 외쳤어요.' },
+      { sq: 24, art: '📢', title: '또 거짓말', text: '마을 사람들이 헐레벌떡 달려왔지만 늑대는 없었어요. 소년은 깔깔 웃었어요.' },
+      { sq: 28, art: '😢', title: '아무도 오지 않았어요', text: '진짜 늑대가 나타났지만 아무도 믿지 않았어요. 거짓말은 믿음을 잃게 해요.' }
+    ] },
+    { name: '사자와 생쥐', scenes: [
+      { sq: 32, art: '🐭', title: '살려 주세요', text: '잠자던 사자를 깨운 생쥐가 "살려 주시면 꼭 은혜를 갚을게요" 하고 빌었어요.' },
+      { sq: 35, art: '🦁', title: '사자의 웃음', text: '사자는 "네가 어떻게 날 돕겠니?" 하고 웃으며 생쥐를 놓아주었어요.' },
+      { sq: 37, art: '🤝', title: '은혜 갚은 생쥐', text: '그물에 걸린 사자를 생쥐가 그물을 갉아 구해 주었어요. 작은 친구도 소중해요!' }
+    ] },
+    { name: '여우와 두루미', scenes: [
+      { sq: 44, art: '🍲', title: '납작한 접시', text: '여우가 두루미를 초대해 납작한 접시에 수프를 내놓았어요.' },
+      { sq: 47, art: '🦩', title: '쫄쫄 굶은 두루미', text: '부리가 긴 두루미는 한 모금도 먹지 못하고 돌아갔어요.' },
+      { sq: 48, art: '🏺', title: '목이 긴 호리병', text: '이번엔 두루미가 목이 긴 병에 음식을 담아 대접했어요. 남을 배려해요!' }
+    ] },
+    { name: '북풍과 해님', scenes: [
+      { sq: 51, art: '🧳', title: '나그네의 외투', text: '북풍과 해님이 "누가 나그네 외투를 벗길까?" 하고 내기를 했어요.' },
+      { sq: 56, art: '🧥', title: '꽁꽁 여민 외투', text: '북풍이 세게 불수록 나그네는 외투를 더 꽁꽁 여몄어요.' },
+      { sq: 59, art: '🌞', title: '따뜻한 햇살', text: '해님이 따뜻하게 비추자 나그네가 스스로 외투를 벗었어요. 부드러움이 강해요!' }
+    ] },
+    { name: '까마귀와 물병', scenes: [
+      { sq: 61, art: '🐦', title: '목마른 까마귀', text: '목마른 까마귀가 물이 조금 남은 물병을 찾았어요.' },
+      { sq: 64, art: '🪨', title: '조약돌 하나, 둘', text: '부리가 닿지 않자 까마귀는 조약돌을 하나씩 물병에 넣었어요.' },
+      { sq: 68, art: '💧', title: '시원한 물', text: '물이 차올라 시원하게 마셨어요. 지혜를 내면 길이 있어요!' }
+    ] },
+    { name: '황금알을 낳는 거위', scenes: [
+      { sq: 72, art: '🥚', title: '황금알', text: '농부의 거위가 날마다 황금알을 하나씩 낳았어요.' },
+      { sq: 75, art: '💭', title: '욕심이 생겼어요', text: '농부는 "배 속의 황금알을 한꺼번에 꺼내야지" 하고 생각했어요.' },
+      { sq: 78, art: '💔', title: '모두 잃었어요', text: '결국 거위도 황금알도 모두 잃고 말았어요. 지나친 욕심은 금물!' }
+    ] },
+    { name: '시골쥐와 도시쥐', scenes: [
+      { sq: 83, art: '🌾', title: '소박한 시골 밥상', text: '도시쥐가 시골쥐 집에 놀러 와 "음식이 너무 소박하네" 하고 말했어요.' },
+      { sq: 85, art: '🏙️', title: '화려한 도시', text: '도시쥐를 따라간 시골쥐는 맛있는 음식이 가득한 부엌에 깜짝 놀랐어요.' },
+      { sq: 88, art: '🏡', title: '우리 집이 최고', text: '고양이가 나타나 혼비백산! 시골쥐는 "마음 편한 우리 집이 최고야" 하고 돌아갔어요.' }
+    ] },
+    { name: '여우와 신 포도', scenes: [
+      { sq: 91, art: '🍇', title: '높이 달린 포도', text: '배고픈 여우가 높은 가지에 달린 탐스러운 포도를 보았어요.' },
+      { sq: 94, art: '🦊', title: '펄쩍펄쩍', text: '여우는 몇 번이나 펄쩍 뛰었지만 포도에 닿지 않았어요.' },
+      { sq: 97, art: '😤', title: '저건 신 포도야', text: '"저 포도는 분명 실 거야" 하고 핑계를 댔어요. 핑계 대지 말고 다시 도전해요!' }
+    ] }
+  ];
+
+  // 사다리: 우화 속 착한 행동. 키는 사다리 아래 칸입니다.
   const LADDER_STORY = {
-    4: { from: '🧹', to: '🏅', cause: '내 방을 깨끗이 청소했어요.', result: '칭찬 배지를 받았어요!' },
-    13: { from: '🌱', to: '🌻', cause: '화분에 씨앗을 심고 매일 물을 줬어요.', result: '해바라기가 활짝 피었어요!' },
-    33: { from: '📚', to: '🏆', cause: '도서관에서 책을 열심히 읽었어요.', result: '독서 퀴즈 대회에서 1등!' },
-    42: { from: '🐶', to: '🎁', cause: '길 잃은 강아지의 집을 찾아 줬어요.', result: '주인 아주머니가 선물을 주셨어요!' },
-    50: { from: '🥕', to: '🥇', cause: '채소를 골고루 먹었어요.', result: '튼튼해져서 달리기 1등!' },
-    62: { from: '🤝', to: '🎈', cause: '다툰 친구에게 먼저 사과했어요.', result: '함께 신나는 소풍을 갔어요!' },
-    74: { from: '🎹', to: '🎉', cause: '매일 피아노를 연습했어요.', result: '학예회에서 큰 박수를 받았어요!' }
+    4: { fable: '토끼와 거북이', from: '🐢', to: '🏁', cause: '거북이처럼 쉬지 않고 꾸준히 걸었어요.', result: '어느새 저만치 앞서 나갔어요!' },
+    13: { fable: '개미와 베짱이', from: '📦', to: '🏠', cause: '개미처럼 부지런히 겨울을 준비했어요.', result: '추운 겨울에도 따뜻하게 지내요!' },
+    33: { fable: '사자와 생쥐', from: '💝', to: '🎁', cause: '작은 친구에게도 친절을 베풀었어요.', result: '그 친구가 은혜를 갚았어요!' },
+    42: { fable: '여우와 두루미', from: '🥣', to: '🍽️', cause: '친구가 먹기 좋은 그릇에 음식을 차렸어요.', result: '모두 함께 즐거운 식사를 했어요!' },
+    50: { fable: '북풍과 해님', from: '☀️', to: '😊', cause: '해님처럼 따뜻하게 말을 건넸어요.', result: '친구가 마음을 활짝 열었어요!' },
+    62: { fable: '까마귀와 물병', from: '💪', to: '🚰', cause: '포기하지 않고 끝까지 방법을 찾았어요.', result: '드디어 시원한 물을 마셨어요!' },
+    74: { fable: '황금알을 낳는 거위', from: '🧺', to: '💎', cause: '욕심내지 않고 날마다 하나씩 모았어요.', result: '든든한 보물 상자가 생겼어요!' }
   };
-  // 뱀: 꼬리를 밟으면 머리 쪽으로 내려갑니다. 키는 뱀 꼬리 칸입니다.
+  // 뱀: 우화 속 실수. 꼬리를 밟으면 머리 쪽으로 내려갑니다. 키는 뱀 꼬리 칸입니다.
   const SNAKE_STORY = {
-    27: { from: '🍭', to: '🦷', cause: '사탕을 한꺼번에 너무 많이 먹었어요.', result: '이가 아파서 치과에 가요.' },
-    40: { from: '📱', to: '😴', cause: '밤늦게까지 게임을 했어요.', result: '늦잠을 자서 지각했어요.' },
-    43: { from: '🏃', to: '🩹', cause: '복도에서 마구 뛰었어요.', result: '넘어져서 무릎을 다쳤어요.' },
-    54: { from: '🥤', to: '🧽', cause: '공원에 쓰레기를 버렸어요.', result: '공원 청소 당번이 되었어요.' },
-    66: { from: '🎒', to: '📝', cause: '숙제를 깜빡하고 놀았어요.', result: '학교에 남아 숙제를 해요.' },
-    76: { from: '🚦', to: '👮', cause: '빨간불에 길을 건너려 했어요.', result: '경찰관에게 교통 규칙을 다시 배워요.' },
-    89: { from: '🍦', to: '🤒', cause: '아이스크림을 세 개나 먹었어요.', result: '배탈이 나서 하루 쉬어요.' },
-    99: { from: '🐇', to: '🐢', cause: '다 왔다고 방심하고 낮잠을 잤어요.', result: '거북이가 먼저 가 버렸어요.' }
+    27: { fable: '양치기 소년', from: '🤥', to: '🐺', cause: '장난으로 또 "늑대다!" 하고 거짓말을 했어요.', result: '진짜 늑대가 왔을 때 아무도 믿어 주지 않았어요.' },
+    40: { fable: '사자와 생쥐', from: '😏', to: '🕸️', cause: '작은 생쥐라고 얕보고 비웃었어요.', result: '그물에 걸려 꼼짝도 못 해요.' },
+    43: { fable: '여우와 두루미', from: '🦊', to: '🍶', cause: '친구를 골탕 먹이려 납작한 접시를 내놓았어요.', result: '나도 목이 긴 병 앞에서 쫄쫄 굶었어요.' },
+    54: { fable: '북풍과 해님', from: '🌬️', to: '🥶', cause: '북풍처럼 힘으로만 밀어붙였어요.', result: '나그네가 외투를 더 꽁꽁 여몄어요.' },
+    66: { fable: '까마귀와 물병', from: '😩', to: '🥵', cause: '부리가 안 닿는다고 금방 포기했어요.', result: '목이 말라 털썩 주저앉았어요.' },
+    76: { fable: '황금알을 낳는 거위', from: '💰', to: '😭', cause: '욕심을 부려 한꺼번에 다 가지려 했어요.', result: '거위도 황금알도 모두 잃었어요.' },
+    89: { fable: '시골쥐와 도시쥐', from: '🧀', to: '🐈', cause: '맛있는 음식에 정신이 팔려 주위를 살피지 않았어요.', result: '고양이에게 쫓겨 허둥지둥 달아났어요.' },
+    99: { fable: '토끼와 거북이', from: '🐇', to: '🐢', cause: '결승선을 코앞에 두고 방심해서 낮잠을 잤어요.', result: '거북이가 먼저 가 버렸어요. 다시 힘내요!' }
   };
-  // 그림 칸에 그냥 멈췄을 때 나오는 이야기 (사다리 위 칸, 뱀 머리 칸, 그림만 있는 칸)
-  const SPOT_STORY = {
-    25: { title: '반짝반짝 칭찬 배지', text: '칭찬 배지 게시판을 구경했어요.' },
-    46: { title: '해바라기 밭', text: '키 큰 해바라기가 해님을 따라 고개를 돌려요.' },
-    49: { title: '트로피 진열장', text: '멋진 트로피를 보며 나도 도전해 보기로 했어요.' },
-    63: { title: '깜짝 선물', text: '선물 상자에 예쁜 리본이 달려 있어요.' },
-    69: { title: '신나는 운동장', text: '운동장을 한 바퀴 신나게 달렸어요.' },
-    81: { title: '풍선 가게', text: '알록달록 풍선이 하늘로 날아가요.' },
-    92: { title: '마을 축제', text: '도토리 마을 축제에서 폭죽이 펑펑 터져요.' },
-    5: { title: '치과 앞', text: '양치질은 하루 세 번, 꼭 기억해요.' },
-    3: { title: '꾸벅꾸벅', text: '하품이 나와요. 오늘은 일찍 자야겠어요.' },
-    18: { title: '보건실', text: '보건 선생님이 반창고를 붙여 주셨어요.' },
-    31: { title: '깨끗한 공원', text: '모두 함께 치운 공원이 반짝반짝해요.' },
-    45: { title: '숙제 노트', text: '오늘 숙제를 미리 끝내 두었어요.' },
-    58: { title: '파출소', text: '경찰관 아저씨가 손을 흔들어 주셨어요.' },
-    53: { title: '약국', text: '따뜻한 물을 마시고 푹 쉬었어요.' },
-    41: { title: '느릿느릿 거북이', text: '천천히 가도 꾸준히 가면 도착해요.' },
-    9: { art: '🐣', title: '삐약삐약!', text: '병아리가 알을 깨고 나왔어요.' },
-    16: { art: '🌈', title: '와, 무지개다!', text: '비가 그친 하늘에 일곱 빛깔 무지개가 떴어요.' },
-    22: { art: '🦋', title: '팔랑팔랑', text: '나비가 꽃밭에서 인사해요.' },
-    36: { art: '🍎', title: '냠냠, 사과', text: '빨갛게 잘 익은 사과를 따 먹었어요.' },
-    57: { art: '🎵', title: '랄랄라~', text: '친구들과 신나는 노래를 불렀어요.' },
-    60: { art: '🍀', title: '행운의 네잎클로버', text: '풀밭에서 네잎클로버를 찾았어요.' },
-    71: { art: '⭐', title: '소원을 빌어요', text: '별똥별에게 소원을 빌었어요.' },
-    84: { art: '🐿️', title: '다람쥐 친구', text: '다람쥐가 도토리를 나눠 줬어요.' },
-    87: { art: '🍰', title: '생일 축하해!', text: '친구 생일 파티에 초대받았어요.' },
-    95: { art: '🚀', title: '거의 다 왔어요!', text: '100칸이 코앞이에요. 조금만 더 힘내요!' }
+  // 사다리 위 칸, 뱀 머리 칸에 그냥 멈췄을 때 나오는 이야기
+  const DEST_NOTES = {
+    25: { title: '꾸준함의 길', text: '꾸준히 걸어온 친구들이 쉬어 가는 곳이에요.' },
+    46: { title: '개미네 집', text: '겨울 준비를 마친 개미네 집은 따뜻해요.' },
+    49: { title: '은혜의 선물', text: '생쥐가 놓고 간 고마움의 선물이 있어요.' },
+    63: { title: '함께하는 식탁', text: '모두가 먹기 좋은 그릇이 놓여 있어요.' },
+    69: { title: '웃음꽃 마을', text: '따뜻한 말 한마디에 모두 웃고 있어요.' },
+    81: { title: '시원한 샘물', text: '끝까지 노력한 친구가 찾은 샘물이에요.' },
+    92: { title: '보물 창고', text: '조금씩 모은 보물이 반짝반짝 빛나요.' },
+    5: { title: '늑대 숲', text: '거짓말은 하지 않기로 약속해요.' },
+    3: { title: '사냥꾼의 그물', text: '조심조심, 그물을 피해서 지나가요.' },
+    18: { title: '두루미네 부엌', text: '목이 긴 병이 가득한 부엌이에요.' },
+    31: { title: '찬바람 언덕', text: '북풍이 쌩쌩 부는 추운 언덕이에요.' },
+    45: { title: '메마른 들판', text: '목마를 땐 지혜를 짜내 봐요.' },
+    58: { title: '텅 빈 둥지', text: '욕심을 부린 농부가 한숨을 쉬어요.' },
+    53: { title: '고양이 골목', text: '살금살금, 고양이를 조심해요.' },
+    41: { title: '거북이의 길', text: '천천히 가도 꾸준히 가면 도착해요.' }
   };
-  // 칸마다 붙일 그림 스티커와 테두리 색 (사다리 쪽은 금색, 뱀 쪽은 보라색)
+  // 함정 칸: 앞으로 2칸 또는 뒤로 3칸. 몇 개는 움직인 곳이 뱀 꼬리나 사다리라 연달아 이동합니다.
+  const TRAPS = {
+    7: { move: 2, title: '응원의 바람', text: '숲속 친구들의 응원에 힘이 나서 앞으로 2칸!' },
+    11: { move: 2, title: '개미의 지름길', text: '개미가 알려 준 지름길로 앞으로 2칸!' },
+    20: { move: -3, title: '베짱이의 노래', text: '베짱이 노랫소리에 한눈팔다 뒤로 3칸!' },
+    30: { move: -3, title: '늑대 소리', text: '"늑대다!" 소리에 깜짝 놀라 뒤로 3칸!' },
+    38: { move: 2, title: '사자의 으르렁', text: '사자의 으르렁 소리에 놀라 앞으로 2칸 펄쩍!' },
+    52: { move: 2, title: '북풍 돌풍', text: '세찬 북풍에 휙 날려 앞으로 2칸!' },
+    65: { move: -3, title: '물병 찾기', text: '물병을 두고 와서 뒤로 3칸 되돌아가요.' },
+    79: { move: -3, title: '떨어진 황금알', text: '황금알을 떨어뜨려 줍느라 뒤로 3칸!' },
+    87: { move: 2, title: '도시의 인파', text: '바쁜 사람들에게 떠밀려 앞으로 2칸!' },
+    96: { move: -3, title: '미끄러운 포도밭', text: '포도를 따려다 미끄러져 뒤로 3칸!' }
+  };
+
+  // 장면 칸 찾기표와 칸마다 붙일 그림 스티커 (사다리 쪽은 금색, 뱀 쪽은 보라색, 장면은 번호 표시)
+  const SCENES = {};
+  FABLES.forEach((fable, fi) => {
+    fable.scenes.forEach((scene, si) => { SCENES[scene.sq] = { fable: fi, part: si + 1, art: scene.art, title: scene.title, text: scene.text }; });
+  });
+  const TOTAL_SCENES = Object.keys(SCENES).length;
   const PICTURES = {};
   Object.keys(LADDER_STORY).forEach((k) => {
     const s = LADDER_STORY[k];
@@ -774,8 +945,8 @@ select {
     PICTURES[k] = { art: s.from, ring: '#7048E8' };
     PICTURES[JUMPS[k]] = { art: s.to, ring: '#7048E8' };
   });
-  Object.keys(SPOT_STORY).forEach((k) => {
-    if (SPOT_STORY[k].art) PICTURES[k] = { art: SPOT_STORY[k].art, ring: '#1B1E3C' };
+  Object.keys(SCENES).forEach((k) => {
+    PICTURES[k] = { art: SCENES[k].art, ring: INK, part: SCENES[k].part };
   });
   const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
   const ALL_ART = Object.keys(PICTURES).map((k) => PICTURES[k].art).join('');
@@ -796,6 +967,135 @@ select {
   const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const SPEED = reduceMotion ? 0.35 : 1;
 
+  // ---------- 효과음 (소리 파일 없이 브라우저에서 직접 만듭니다) ----------
+  const Sound = (() => {
+    let ac = null;
+    let master = null;
+    let noiseBuf = null;
+    let muted = false;
+    try { muted = localStorage.getItem('snakeDiceMuted') === '1'; } catch (e) { /* 저장소를 못 쓰면 소리 켬 */ }
+
+    function ensure() {
+      if (!ac) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try { ac = new AC(); } catch (e) { return null; }
+        master = ac.createGain();
+        master.gain.value = 0.5;
+        master.connect(ac.destination);
+      }
+      if (ac.state === 'suspended') ac.resume().catch(() => {});
+      return ac;
+    }
+
+    function tone(o) {
+      if (muted) return;
+      const c = ensure();
+      if (!c) return;
+      const t = c.currentTime + (o.delay || 0);
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.freq, t);
+      if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + o.dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(o.vol || 0.2, t + (o.attack || 0.008));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+      if (o.vibrato) {
+        const lfo = c.createOscillator();
+        const depth = c.createGain();
+        lfo.frequency.value = o.vibrato;
+        depth.gain.value = o.depth || 20;
+        lfo.connect(depth);
+        depth.connect(osc.frequency);
+        lfo.start(t);
+        lfo.stop(t + o.dur + 0.05);
+      }
+      osc.connect(g);
+      g.connect(master);
+      osc.start(t);
+      osc.stop(t + o.dur + 0.05);
+    }
+
+    function noise(o) {
+      if (muted) return;
+      const c = ensure();
+      if (!c) return;
+      if (!noiseBuf) {
+        noiseBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      }
+      const t = c.currentTime + (o.delay || 0);
+      const src = c.createBufferSource();
+      src.buffer = noiseBuf;
+      const filter = c.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = o.freq || 2500;
+      filter.Q.value = o.q || 1.2;
+      const g = c.createGain();
+      g.gain.setValueAtTime(o.vol || 0.3, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+      src.start(t);
+      src.stop(t + o.dur + 0.02);
+    }
+
+    function bounce(delay, strength) {
+      tone({ delay, freq: 190, to: 70, dur: 0.14, vol: 0.5 * strength });
+      noise({ delay, dur: 0.05, vol: 0.3 * strength, freq: 1500, q: 1 });
+    }
+
+    return {
+      unlock: ensure,
+      isMuted: () => muted,
+      setMuted(value) {
+        muted = value;
+        try { localStorage.setItem('snakeDiceMuted', value ? '1' : '0'); } catch (e) { /* 기억하지 못해도 이번에는 적용 */ }
+      },
+      // 주사위가 굴러가며 달그락거리는 소리와 바닥에 튕기는 소리
+      roll(spinSec) {
+        for (let t = 0; t < spinSec * 0.9; t += 0.045 + Math.random() * 0.05) {
+          noise({ delay: t, dur: 0.035, vol: 0.18, freq: 1800 + Math.random() * 2600, q: 3 });
+        }
+        if (spinSec > 0) {
+          bounce(spinSec * 0.35, 1);
+          bounce(spinSec * 0.68, 0.6);
+        }
+        bounce(spinSec * 0.9, 0.4);
+        tone({ delay: spinSec * 0.9 + 0.06, freq: 1318, dur: 0.25, vol: 0.1, type: 'triangle' });
+      },
+      step(i) { tone({ freq: 520 * Math.pow(2, (Math.min(i, 8) * 2) / 12), dur: 0.09, vol: 0.12, type: 'triangle' }); },
+      ladder() {
+        [523, 659, 784, 1047, 1319].forEach((f, i) => tone({ delay: i * 0.08, freq: f, dur: 0.25, vol: 0.14, type: 'triangle' }));
+        [2093, 2637].forEach((f, i) => tone({ delay: 0.42 + i * 0.07, freq: f, dur: 0.3, vol: 0.06 }));
+      },
+      snake() {
+        tone({ freq: 880, to: 140, dur: 1.0, vol: 0.2, vibrato: 7, depth: 30 });
+        tone({ delay: 0.05, freq: 440, to: 70, dur: 1.0, vol: 0.06, type: 'sawtooth' });
+      },
+      story() {
+        tone({ freq: 1047, dur: 0.5, vol: 0.1 });
+        tone({ delay: 0.12, freq: 1568, dur: 0.6, vol: 0.08 });
+      },
+      trap(forward) {
+        if (forward) {
+          tone({ freq: 220, to: 660, dur: 0.35, vol: 0.18, vibrato: 12, depth: 40 });
+        } else {
+          tone({ freq: 520, to: 160, dur: 0.45, vol: 0.1, type: 'square' });
+          tone({ delay: 0.02, freq: 110, dur: 0.35, vol: 0.08, type: 'sawtooth' });
+        }
+      },
+      win() {
+        [523, 659, 784, 1047].forEach((f, i) => tone({ delay: i * 0.13, freq: f, dur: 0.3, vol: 0.16, type: 'triangle' }));
+        [523, 659, 784, 1047].forEach((f) => tone({ delay: 0.6, freq: f, dur: 1.1, vol: 0.08, type: 'triangle' }));
+      }
+    };
+  })();
+
+  // ---------- 화면 요소 ----------
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
   const boardCache = document.createElement('canvas');
@@ -808,22 +1108,13 @@ select {
   const dice3d = document.getElementById('dice3d');
   const cube = document.getElementById('cube');
   const dice3dResult = document.getElementById('dice3dResult');
-
-  // 입체 주사위의 여섯 면 (마주 보는 면의 합이 7: 1-6, 2-5, 3-4)
-  for (let f = 1; f <= 6; f++) {
-    const face = document.createElement('div');
-    face.className = 'cube-face f' + f;
-    for (let i = 0; i < 9; i++) {
-      const pip = document.createElement('span');
-      pip.className = 'pip' + (PIPS[f].includes(i) ? ' on' : '');
-      face.append(pip);
-    }
-    cube.append(face);
-  }
   const rollBtn = document.getElementById('rollBtn');
+  const soundBtn = document.getElementById('soundBtn');
   const turnLabel = document.getElementById('turnLabel');
   const statusEl = document.getElementById('status');
   const playersEl = document.getElementById('players');
+  const bookList = document.getElementById('bookList');
+  const bookCount = document.getElementById('bookCount');
   const slotsEl = document.getElementById('slots');
   const setupError = document.getElementById('setupError');
   const newGameBtn = document.getElementById('newGameBtn');
@@ -840,6 +1131,23 @@ select {
   const againBtn = document.getElementById('againBtn');
   const closeWinBtn = document.getElementById('closeWinBtn');
 
+  // 입체 주사위: 안쪽 심(모서리를 둥글게 보이게) + 여섯 면 (마주 보는 면의 합이 7)
+  for (let f = 1; f <= 6; f++) {
+    const core = document.createElement('div');
+    core.className = 'cube-core c' + f;
+    cube.append(core);
+  }
+  for (let f = 1; f <= 6; f++) {
+    const face = document.createElement('div');
+    face.className = 'cube-face f' + f;
+    for (let i = 0; i < 9; i++) {
+      const pip = document.createElement('span');
+      pip.className = 'pip' + (PIPS[f].includes(i) ? ' on' : '');
+      face.append(pip);
+    }
+    cube.append(face);
+  }
+
   // ---------- 칸 위치 ----------
   function center(n) {
     const row = Math.floor((n - 1) / 10);
@@ -847,12 +1155,10 @@ select {
     if (row % 2 === 1) col = 9 - col;
     return { x: col * CELL + CELL / 2, y: (9 - row) * CELL + CELL / 2, row, col };
   }
-  // 말이 칸에 혼자 서 있을 때 바닥 위치
   function groundOf(n) {
     const c = center(n);
     return { x: c.x, y: c.y + 22 };
   }
-  // 출발 자리의 말 바닥 위치
   function startSpot(slot) {
     return { x: 150 + slot * 54, y: BOARD + STRIP - 9 };
   }
@@ -961,6 +1267,63 @@ select {
     c.restore();
   }
 
+  // 함정 칸 바닥: 주황 줄무늬와 테두리
+  function drawTrapTile(c, n) {
+    const p = center(n);
+    const x0 = p.x - CELL / 2, y0 = p.y - CELL / 2;
+    c.save();
+    c.beginPath(); c.rect(x0, y0, CELL, CELL); c.clip();
+    c.fillStyle = '#FFE3CC';
+    c.fillRect(x0, y0, CELL, CELL);
+    c.strokeStyle = 'rgba(255, 122, 26, 0.55)';
+    c.lineWidth = 7;
+    for (let d = -CELL; d <= CELL; d += 15) {
+      c.beginPath(); c.moveTo(x0 + d, y0 + CELL); c.lineTo(x0 + d + CELL, y0); c.stroke();
+    }
+    c.restore();
+    c.strokeStyle = '#FF7A1A';
+    c.lineWidth = 3;
+    c.strokeRect(x0 + 1.5, y0 + 1.5, CELL - 3, CELL - 3);
+  }
+
+  // 함정 표시: +2(초록) 또는 −3(빨강)
+  function drawTrapTag(c, n, move) {
+    const p = center(n);
+    const sx = p.x + 12, sy = p.y + 13;
+    c.fillStyle = move > 0 ? '#2B9348' : '#E03131';
+    c.strokeStyle = INK;
+    c.lineWidth = 2;
+    roundRect(c, sx - 16, sy - 11, 32, 22, 7);
+    c.fill(); c.stroke();
+    c.fillStyle = '#FFFFFF';
+    c.font = '16px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText((move > 0 ? '+' : '−') + Math.abs(move), sx, sy + 1);
+  }
+
+  // 그림 스티커 (칸 오른쪽 아래). 우화 장면은 위에 장면 번호를 붙입니다.
+  function drawSticker(c, n, pic) {
+    const p = center(n);
+    const sx = p.x + 13, sy = p.y + 12;
+    c.fillStyle = 'rgba(255, 255, 255, 0.94)';
+    c.strokeStyle = pic.ring;
+    c.lineWidth = 2;
+    c.beginPath(); c.arc(sx, sy, 14.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = INK;
+    c.font = '19px ' + EMOJI_FONT;
+    c.fillText(pic.art, sx, sy + 1);
+    if (pic.part) {
+      c.fillStyle = INK;
+      c.beginPath(); c.arc(sx + 11, sy - 11, 6.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#FFE14D';
+      c.font = '9px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+      c.fillText(String(pic.part), sx + 11, sy - 10.5);
+    }
+  }
+
   function buildBoard() {
     const c = boardCache.getContext('2d');
     c.setTransform(SCALE, 0, 0, SCALE, 0, 0);
@@ -972,6 +1335,7 @@ select {
       c.fillStyle = n === GOAL ? '#FFC93C' : colored ? TILE_COLORS[(p.row + Math.floor(p.col / 2)) % 4] : PAPER;
       c.fillRect(p.x - CELL / 2, p.y - CELL / 2, CELL, CELL);
     }
+    Object.keys(TRAPS).forEach((k) => drawTrapTile(c, Number(k)));
     c.strokeStyle = 'rgba(27, 30, 60, 0.35)';
     c.lineWidth = 1;
     c.beginPath();
@@ -989,20 +1353,8 @@ select {
     ladders.forEach((l) => drawLadder(c, center(l.from), center(l.to)));
     snakes.forEach((s) => drawSnake(c, s));
 
-    // 그림 스티커 (칸 오른쪽 아래)
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    Object.keys(PICTURES).forEach((key) => {
-      const pic = PICTURES[key];
-      const p = center(Number(key));
-      const sx = p.x + 13, sy = p.y + 12;
-      c.fillStyle = 'rgba(255, 255, 255, 0.94)';
-      c.strokeStyle = pic.ring;
-      c.lineWidth = 2;
-      c.beginPath(); c.arc(sx, sy, 14.5, 0, Math.PI * 2); c.fill(); c.stroke();
-      c.font = '19px ' + EMOJI_FONT;
-      c.fillText(pic.art, sx, sy + 1);
-    });
+    Object.keys(PICTURES).forEach((k) => drawSticker(c, Number(k), PICTURES[k]));
+    Object.keys(TRAPS).forEach((k) => drawTrapTag(c, Number(k), TRAPS[k].move));
 
     // 칸 번호 (뱀·사다리 위에 보이도록 마지막에)
     c.font = '14px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
@@ -1053,6 +1405,7 @@ select {
   let busy = false;
   let gameId = 0;
   let logItems = [];
+  let readScenes = new Set();
   let anim = null;
   let confetti = [];
   let effects = [];
@@ -1148,7 +1501,7 @@ select {
 
     const grow = 14 * e;
     ctx.lineWidth = 5 * (1 - t) + 1;
-    ctx.strokeStyle = rgba(fx.kind === 'down' ? '#9C8CF0' : '#FFE14D', 1 - t);
+    ctx.strokeStyle = rgba(spec.edge, 1 - t);
     ctx.strokeRect(x0 - grow, y0 - grow, CELL + grow * 2, CELL + grow * 2);
 
     if (spec.ring) {
@@ -1278,7 +1631,7 @@ select {
     setTimeout(() => boardWrap.classList.remove('is-shaking'), 500);
   }
 
-  // ---------- 가운데 메시지 (사다리, 뱀, 그림 칸 이야기) ----------
+  // ---------- 가운데 메시지 (사다리, 뱀, 함정, 이야기) ----------
   let burstTimer = 0;
   let burstSeq = 0;
   function setArt(list) {
@@ -1310,37 +1663,72 @@ select {
     }, ms);
   }
 
-  // 사다리나 뱀을 탈 때: 착한 일/실수 이야기와 함께 신나는/안타까운 메시지
-  function showJumpBurst(p, from, to) {
-    const up = to > from;
-    const story = up ? LADDER_STORY[from] : SNAKE_STORY[from];
-    setArt(story ? [story.from, story.to] : []);
-    burstKicker.textContent = up ? '사다리 타고 올라가요' : '뱀 꼬리를 밟았어요';
-    burstTitle.textContent = pick(up ? LADDER_TITLES : SNAKE_TITLES);
-    burstStory.textContent = story ? story.cause + ' ' + story.result : '';
-    burstSub.textContent = p.name + ' · ' + from + '칸 → ' + to + '칸 (' + Math.abs(to - from) + '칸 ' + (up ? '위로' : '아래로') + ')';
-    burstSub.hidden = false;
-    openBurst(up ? 'ladder' : 'snake', 2600);
-  }
-
-  // 그림 칸에 그냥 멈췄을 때: 짧은 이야기
-  function showSpotBurst(p, square) {
-    const note = SPOT_STORY[square];
-    const pic = PICTURES[square];
-    if (!note || !pic) return false;
-    setArt([pic.art]);
-    burstKicker.textContent = p.name + ' · ' + square + '칸';
-    burstTitle.textContent = note.title;
-    burstStory.textContent = note.text;
-    burstSub.textContent = '';
-    burstSub.hidden = true;
-    openBurst('story', 2000);
-    return true;
-  }
   function hideBurst() {
     burstSeq++;
     clearTimeout(burstTimer);
     burstEl.hidden = true;
+  }
+
+  // 사다리나 뱀을 탈 때: 우화 속 착한 일/실수와 함께 신나는/안타까운 메시지
+  function showJumpBurst(p, from, to, chained) {
+    const up = to > from;
+    const story = up ? LADDER_STORY[from] : SNAKE_STORY[from];
+    setArt(story ? [story.from, story.to] : []);
+    burstKicker.textContent = (chained ? '연달아! ' : '') + (story ? story.fable + ' · ' : '') + (up ? '사다리 타고 올라가요' : '뱀 꼬리를 밟았어요');
+    burstTitle.textContent = pick(up ? LADDER_TITLES : SNAKE_TITLES);
+    burstStory.textContent = story ? story.cause + ' ' + story.result : '';
+    burstSub.textContent = p.name + ' · ' + from + '칸 → ' + to + '칸 (' + Math.abs(to - from) + '칸 ' + (up ? '위로' : '아래로') + ')';
+    burstSub.hidden = false;
+    if (up) Sound.ladder(); else Sound.snake();
+    openBurst(up ? 'ladder' : 'snake', 2600);
+  }
+
+  // 함정 칸: 앞으로 2칸 또는 뒤로 3칸
+  function showTrapBurst(p, from, to, trap) {
+    const forward = trap.move > 0;
+    const tag = document.createElement('span');
+    tag.className = 'trap-tag ' + (forward ? 'is-fw' : 'is-bw');
+    tag.textContent = (forward ? '+' : '−') + Math.abs(trap.move);
+    burstArt.replaceChildren(tag);
+    burstKicker.textContent = '함정 칸 · ' + trap.title;
+    burstTitle.textContent = forward ? '앞으로 ' + trap.move + '칸!' : '뒤로 ' + Math.abs(trap.move) + '칸…';
+    burstStory.textContent = trap.text;
+    burstSub.textContent = p.name + ' · ' + from + '칸 → ' + to + '칸';
+    burstSub.hidden = false;
+    Sound.trap(forward);
+    openBurst('trap', 2000);
+  }
+
+  // 그림 칸에 그냥 멈췄을 때: 우화 장면이면 이야기책에 모읍니다. 기록에 남길 글을 돌려줍니다.
+  function showSpotBurst(p, square) {
+    const scene = SCENES[square];
+    if (scene) {
+      const fable = FABLES[scene.fable];
+      setArt([scene.art]);
+      burstKicker.textContent = fable.name + ' · 장면 ' + scene.part + '/3';
+      burstTitle.textContent = scene.title;
+      burstStory.textContent = scene.text;
+      burstSub.textContent = '';
+      burstSub.hidden = true;
+      readScenes.add(square);
+      Sound.story();
+      openBurst('story', 3000);
+      return fable.name + ' ' + scene.part + '/3 · ' + scene.title;
+    }
+    const note = DEST_NOTES[square];
+    const pic = PICTURES[square];
+    if (note && pic) {
+      setArt([pic.art]);
+      burstKicker.textContent = p.name + ' · ' + square + '칸';
+      burstTitle.textContent = note.title;
+      burstStory.textContent = note.text;
+      burstSub.textContent = '';
+      burstSub.hidden = true;
+      Sound.story();
+      openBurst('story', 2200);
+      return note.title + ' · ' + note.text;
+    }
+    return '';
   }
 
   // ---------- 주사위 ----------
@@ -1370,11 +1758,12 @@ select {
     dice3d.classList.remove('is-tossing', 'is-landed', 'is-out');
   }
 
-  // 게임판 가운데에 입체 주사위가 날아와 구르다가 나온 눈을 보여 줍니다.
+  // 게임판 가운데로 입체 주사위가 던져져 튕기며 구르다가 나온 눈을 보여 줍니다.
   async function rollDiceAnim(final) {
     const seq = ++diceSeq;
     const spinMs = reduceMotion ? 0 : 1150;
     const [bx, by] = CUBE_BASE[final];
+    hideBurst();
     dice3d.classList.remove('is-tossing', 'is-landed', 'is-out');
     dice3dResult.textContent = final + ' 나왔어요!';
     cube.style.transition = 'none';
@@ -1393,6 +1782,7 @@ select {
       cube.style.transition = 'transform ' + spinMs + 'ms cubic-bezier(0.18, 0.75, 0.22, 1)';
       cube.style.transform = 'rotateX(' + ex + 'deg) rotateY(' + ey + 'deg) rotateZ(' + ez + 'deg)';
     }
+    Sound.roll(spinMs / 1000);
 
     diceEl.classList.add('rolling');
     const end = performance.now() + Math.max(spinMs, 150);
@@ -1423,14 +1813,6 @@ select {
     return list;
   }
 
-  // 한 칸씩 앞으로 갑니다. 100칸에 닿으면 주사위 눈이 남아도 거기서 멈춥니다.
-  function pathSteps(from, roll) {
-    const steps = [];
-    const last = Math.min(from + roll, GOAL);
-    for (let pos = from + 1; pos <= last; pos++) steps.push(pos);
-    return steps;
-  }
-
   function newGame(cfg) {
     gameId++;
     clearTimeout(computerTimer);
@@ -1443,6 +1825,7 @@ select {
     confetti = [];
     effects = [];
     logItems = [];
+    readScenes = new Set();
     hideWin();
     hideBurst();
     hideDice3d();
@@ -1451,6 +1834,23 @@ select {
     renderSetup();
     render();
     scheduleComputer();
+  }
+
+  // 말을 한 칸씩 앞이나 뒤로 움직입니다. 100칸을 넘지 않습니다.
+  async function walk(idx, from, to, id, color) {
+    const dir = to >= from ? 1 : -1;
+    let prev = from;
+    let k = 0;
+    for (let sq = from + dir; dir > 0 ? sq <= to : sq >= to; sq += dir) {
+      await hop(idx, prev, sq, id);
+      if (id !== gameId) return false;
+      players[idx].pos = sq;
+      prev = sq;
+      Sound.step(k++);
+      addFx(sq, sq === to ? 'land' : 'step', color);
+    }
+    anim = null;
+    return true;
   }
 
   async function takeTurn() {
@@ -1466,52 +1866,76 @@ select {
     await rollDiceAnim(roll);
     if (id !== gameId) return;
 
+    // 1) 주사위 수만큼 이동 (100칸에 닿으면 남은 눈은 버림)
     const from = p.pos;
-    const steps = pathSteps(from, roll);
-    let prev = from;
-    for (let k = 0; k < steps.length; k++) {
-      const sq = steps[k];
-      await hop(idx, prev, sq, id);
-      if (id !== gameId) return;
-      p.pos = sq;
-      prev = sq;
-      addFx(sq, k === steps.length - 1 ? 'land' : 'step', SLOTS[p.slot].color);
-    }
-    anim = null;
-    const landed = p.pos;
+    const target = Math.min(from + roll, GOAL);
+    if (!(await walk(idx, from, target, id, SLOTS[p.slot].color))) return;
     const fromText = from === 0 ? '출발점' : from + '칸';
-    let msg = '주사위 ' + roll + ' · ' + fromText + '에서 ' + landed + '칸으로 갔습니다.';
-    if (landed === GOAL) {
+    let msg = '주사위 ' + roll + ' · ' + fromText + '에서 ' + target + '칸으로 갔습니다.';
+    if (target === GOAL) {
       msg = '주사위 ' + roll + ' · ' + fromText + '에서 ' + GOAL + '칸에 도착했습니다.';
       if (from + roll > GOAL) msg += ' (남은 눈 ' + (from + roll - GOAL) + '개는 쓰지 않음)';
     }
     addLog(p, msg, false);
     render();
 
-    const dest = JUMPS[landed];
-    if (dest !== undefined) {
-      await sleep(250 * SPEED);
-      if (id !== gameId) return;
-      const up = dest > landed;
-      showJumpBurst(p, landed, dest);
-      if (up) {
-        await slideLadder(idx, landed, dest, id);
-      } else {
-        shakeBoard();
-        await slideSnake(idx, landed, id);
+    // 2) 멈춘 칸 처리: 함정 → 사다리/뱀 → 이야기. 함정으로 움직인 곳이 사다리나 뱀이면 연달아 처리합니다.
+    let chained = false;
+    let afterJump = false;
+    for (let guard = 0; guard < 4 && p.pos !== GOAL; guard++) {
+      const here = p.pos;
+      const trap = TRAPS[here];
+      const dest = JUMPS[here];
+      if (trap) {
+        await sleep(250 * SPEED);
+        if (id !== gameId) return;
+        const to = Math.max(1, Math.min(GOAL, here + trap.move));
+        showTrapBurst(p, here, to, trap);
+        await sleep(850 * SPEED);
+        if (id !== gameId) return;
+        if (!(await walk(idx, here, to, id, '#FF7A1A'))) return;
+        addFx(to, 'trap', '#FF7A1A');
+        addLog(p, '함정! ' + trap.title + ' · ' + here + '칸 → ' + to + '칸', true);
+        render();
+        await sleep(500 * SPEED);
+        if (id !== gameId) return;
+        chained = true;
+        afterJump = false;
+        continue;
       }
-      if (id !== gameId) return;
-      p.pos = dest;
-      anim = null;
-      addFx(dest, up ? 'up' : 'down', up ? '#FFC93C' : '#7048E8');
-      addLog(p, up ? '사다리를 타고 ' + dest + '칸으로 올라갔습니다!' : '뱀 꼬리를 밟아 ' + dest + '칸으로 미끄러졌습니다!', true);
-      render();
-      await sleep(1300 * SPEED);
-      if (id !== gameId) return;
-    } else if (landed !== GOAL && showSpotBurst(p, landed)) {
-      addLog(p, SPOT_STORY[landed].title + ' · ' + SPOT_STORY[landed].text, false);
-      await sleep(1100 * SPEED);
-      if (id !== gameId) return;
+      if (dest !== undefined) {
+        await sleep(250 * SPEED);
+        if (id !== gameId) return;
+        const up = dest > here;
+        showJumpBurst(p, here, dest, chained);
+        if (up) {
+          await slideLadder(idx, here, dest, id);
+        } else {
+          shakeBoard();
+          await slideSnake(idx, here, id);
+        }
+        if (id !== gameId) return;
+        p.pos = dest;
+        anim = null;
+        addFx(dest, up ? 'up' : 'down', up ? '#FFC93C' : '#7048E8');
+        addLog(p, up ? '사다리를 타고 ' + dest + '칸으로 올라갔습니다!' : '뱀 꼬리를 밟아 ' + dest + '칸으로 미끄러졌습니다!', true);
+        render();
+        await sleep(1500 * SPEED);
+        if (id !== gameId) return;
+        chained = true;
+        afterJump = true;
+        continue;
+      }
+      if (!afterJump) {
+        const told = showSpotBurst(p, here);
+        if (told) {
+          addLog(p, told, false);
+          renderBook();
+          await sleep(1600 * SPEED);
+          if (id !== gameId) return;
+        }
+      }
+      break;
     }
 
     if (p.pos === GOAL) {
@@ -1521,6 +1945,7 @@ select {
       addLog(p, GOAL + '칸에 도착해 이겼습니다!', true);
       render();
       showWin(true);
+      Sound.win();
       celebrate(id);
       return;
     }
@@ -1581,6 +2006,32 @@ select {
     }));
   }
 
+  // 이야기책: 우화마다 읽은 장면을 점으로 보여 줍니다.
+  function renderBook() {
+    bookCount.textContent = '· 읽은 장면 ' + readScenes.size + '/' + TOTAL_SCENES;
+    bookList.replaceChildren(...FABLES.map((fable, i) => {
+      const li = document.createElement('li');
+      const read = fable.scenes.filter((s) => readScenes.has(s.sq)).length;
+      if (read === fable.scenes.length) li.className = 'is-done';
+      const no = document.createElement('span');
+      no.className = 'book-no';
+      no.textContent = String(i + 1);
+      const name = document.createElement('span');
+      name.className = 'book-name';
+      name.textContent = fable.name + ' (' + fable.scenes[0].sq + '~' + fable.scenes[2].sq + '칸)';
+      const dots = document.createElement('span');
+      dots.className = 'book-dots';
+      dots.setAttribute('aria-label', '장면 ' + fable.scenes.length + '개 중 ' + read + '개 읽음');
+      fable.scenes.forEach((s) => {
+        const d = document.createElement('span');
+        d.className = 'book-dot' + (readScenes.has(s.sq) ? ' is-read' : '');
+        dots.append(d);
+      });
+      li.append(no, name, dots);
+      return li;
+    }));
+  }
+
   function renderPlayers() {
     playersEl.replaceChildren(...players.map((p, i) => {
       const li = document.createElement('li');
@@ -1622,6 +2073,12 @@ select {
     }
   }
 
+  function renderSound() {
+    const on = !Sound.isMuted();
+    soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    soundBtn.textContent = on ? '♪ 소리 켜짐' : '♪ 소리 꺼짐';
+  }
+
   function render() {
     renderPlayers();
     renderTurn();
@@ -1640,9 +2097,10 @@ select {
     const oldToken = document.getElementById('winToken');
     if (oldToken) oldToken.replaceWith(big);
     winTitle.textContent = cheer ? '축하합니다!' : '컴퓨터 승리!';
+    const tail = ' 이솝 우화 장면을 ' + readScenes.size + '개 읽었어요.';
     winMsg.textContent = cheer
-      ? w.name + '님이 ' + GOAL + '칸에 가장 먼저 도착했습니다. 주사위를 ' + w.rolls + '번 굴렸습니다.'
-      : w.name + '의 승리입니다. 주사위를 ' + w.rolls + '번 굴렸습니다. 다시 도전해 보세요!';
+      ? w.name + '님이 ' + GOAL + '칸에 가장 먼저 도착했습니다. 주사위를 ' + w.rolls + '번 굴렸습니다.' + tail
+      : w.name + '의 승리입니다. 주사위를 ' + w.rolls + '번 굴렸습니다. 다시 도전해 보세요!' + tail;
     winBox.hidden = false;
     if (moveFocus) {
       try { againBtn.focus({ preventScroll: true }); } catch (e) { againBtn.focus(); }
@@ -1650,10 +2108,19 @@ select {
   }
   function hideWin() { winBox.hidden = true; }
 
-  againBtn.addEventListener('click', () => newGame(setup));
+  againBtn.addEventListener('click', () => { Sound.unlock(); newGame(setup); });
   closeWinBtn.addEventListener('click', () => {
     hideWin();
     rollBtn.focus();
+  });
+
+  soundBtn.addEventListener('click', () => {
+    Sound.setMuted(!Sound.isMuted());
+    renderSound();
+    if (!Sound.isMuted()) {
+      Sound.unlock();
+      Sound.story();
+    }
   });
 
   // ---------- 참가자 설정 ----------
@@ -1689,10 +2156,12 @@ select {
       return;
     }
     setupError.hidden = true;
+    Sound.unlock();
     newGame(cfg);
   });
 
   rollBtn.addEventListener('click', () => {
+    Sound.unlock();
     if (winner !== null) newGame(setup);
     else takeTurn();
   });
@@ -1711,13 +2180,14 @@ select {
     return {
       setup: setup.slice(),
       players: players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos, rolls: p.rolls })),
-      current, winner, logItems: logItems.slice()
+      current, winner, logItems: logItems.slice(), readScenes: Array.from(readScenes)
     };
   }
 
   function start(data) {
     try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(snapshot); } catch (e) { /* 미리보기 밖에서는 없음 */ }
     buildBoard();
+    renderSound();
     const ok = data && Array.isArray(data.setup) && Array.isArray(data.players) && data.players.length >= 2;
     if (ok) {
       gameId++;
@@ -1726,14 +2196,17 @@ select {
       current = Number(data.current) || 0;
       winner = data.winner === null || data.winner === undefined ? null : Number(data.winner);
       logItems = Array.isArray(data.logItems) ? data.logItems : [];
+      readScenes = new Set(Array.isArray(data.readScenes) ? data.readScenes.map(Number) : []);
       busy = false;
       renderSetup();
       renderLog();
+      renderBook();
       render();
       if (winner !== null) showWin(false);
       scheduleComputer();
     } else {
       newGame(setup);
+      renderBook();
     }
     if (document.fonts && document.fonts.load) {
       Promise.all([
