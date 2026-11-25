@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전. HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
 
-**두 버전의 규칙이 다릅니다.** 사다리·뱀 위치표(`JUMPS`)만 같고, 나머지 규칙은 웹 버전에만 바뀌어 있습니다. 한쪽 규칙을 바꿀 때 다른 쪽도 맞출지 사용자에게 확인합니다.
+**웹 버전이 주력이고, Rust 버전은 더 이상 관리하지 않습니다 (사용자 지시).** 기능과 규칙은 웹 버전에서만 바꾸고, Rust 버전과 맞추지 않습니다. 사용자가 따로 요청할 때만 Rust 버전을 건드립니다. 두 버전은 사다리·뱀 위치표(`JUMPS`)만 같고 나머지 규칙은 이미 다릅니다.
 
 | 규칙 | Rust 버전 | 웹 버전 |
 |---|---|---|
