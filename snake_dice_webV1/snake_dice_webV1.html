@@ -73,6 +73,7 @@ body {
   word-break: keep-all;
 }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
 
 /* 제목 띠 */
 .band {
@@ -144,6 +145,49 @@ body {
   box-shadow: 6px 6px 0 var(--block-shadow);
   background: #1B1E3C;
 }
+/* 게임판 위에 뜨는 축하 메시지 */
+.board-wrap { position: relative; min-width: 0; }
+.win {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(27, 30, 60, 0.38);
+  border-radius: 6px;
+}
+.win-card {
+  width: min(100%, 380px);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px 20px 20px;
+  text-align: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 6px 6px 0 var(--block-shadow);
+  animation: pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.win-card .token { width: 44px; height: 44px; font-size: 1.4rem; }
+.win-eyebrow { margin: 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.win-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.1rem, 6vw, 2.9rem);
+  line-height: 1.1;
+  color: var(--accent);
+  text-wrap: balance;
+}
+.win-msg { margin: 0 0 6px; font-weight: 600; text-wrap: balance; }
+.win-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+@keyframes pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 .legend {
   margin: 0;
   display: flex;
@@ -215,6 +259,7 @@ body {
 }
 .roll:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--block-shadow); }
 .roll:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.win-again { flex: none; min-height: 48px; padding: 8px 22px; font-size: 1.2rem; }
 .status { margin: 0; color: var(--muted); font-size: 0.9rem; min-height: 1.55em; }
 
 /* 말 */
@@ -318,6 +363,7 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .dice.rolling { animation: none; }
   .roll { transition: none; }
+  .win-card { animation: none; }
 }
 </style>
 </head> <!--wrap-->
@@ -329,17 +375,31 @@ select {
       <p class="eyebrow">주사위를 굴려 100칸까지</p>
       <h1 class="title">뱀주사위놀이</h1>
     </div>
-    <p class="tagline">사다리를 만나면 올라가고, 뱀을 만나면 미끄러집니다. 100칸에 정확히 도착하면 이깁니다.</p>
+    <p class="tagline">사다리를 만나면 올라가고, 뱀을 만나면 미끄러집니다. 100칸에 먼저 도착하면 이깁니다.</p>
   </div>
 </header>
 
 <main class="wrap">
   <section class="board-col" aria-label="게임판">
-    <canvas id="board" width="1200" height="1320">게임판 그림입니다. 각 말의 위치는 참가자 목록에서 볼 수 있습니다.</canvas>
+    <div class="board-wrap">
+      <canvas id="board" width="1200" height="1320">게임판 그림입니다. 각 말의 위치는 참가자 목록에서 볼 수 있습니다.</canvas>
+      <div class="win" id="winBox" role="dialog" aria-labelledby="winTitle" aria-describedby="winMsg" hidden>
+        <div class="win-card">
+          <span id="winToken"></span>
+          <p class="win-eyebrow">100칸 도착</p>
+          <h2 class="win-title" id="winTitle">축하합니다!</h2>
+          <p class="win-msg" id="winMsg"></p>
+          <div class="win-actions">
+            <button type="button" class="roll win-again" id="againBtn">한 판 더</button>
+            <button type="button" class="btn" id="closeWinBtn">게임판 보기</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <p class="legend">
       <span>사다리 7개: 올라감</span>
       <span>뱀 8개: 내려감</span>
-      <span>100칸을 넘치면 넘친 만큼 되돌아옴</span>
+      <span>주사위 눈이 남아도 100칸에 닿으면 도착</span>
     </p>
   </section>
 
@@ -372,7 +432,7 @@ select {
         <li>차례대로 주사위를 굴려 나온 수만큼 앞으로 갑니다.</li>
         <li>사다리 아래 칸에 멈추면 사다리를 타고 올라갑니다.</li>
         <li>뱀 머리 칸에 멈추면 뱀 꼬리 칸으로 미끄러집니다.</li>
-        <li>100칸에 정확히 도착하면 이깁니다. 넘치면 넘친 만큼 되돌아옵니다.</li>
+        <li>100칸에 먼저 도착하면 이깁니다. 주사위 눈이 남아도 100칸에 닿으면 바로 도착합니다.</li>
       </ol>
     </details>
 
@@ -431,6 +491,11 @@ select {
   const setupError = document.getElementById('setupError');
   const newGameBtn = document.getElementById('newGameBtn');
   const logEl = document.getElementById('log');
+  const winBox = document.getElementById('winBox');
+  const winTitle = document.getElementById('winTitle');
+  const winMsg = document.getElementById('winMsg');
+  const againBtn = document.getElementById('againBtn');
+  const closeWinBtn = document.getElementById('closeWinBtn');
 
   // ---------- 칸 위치 ----------
   function center(n) {
@@ -781,19 +846,16 @@ select {
     cfg.forEach((kind, slot) => {
       if (kind === 'none') return;
       const name = kind === 'human' ? '플레이어' + (++humans) : '컴퓨터' + (++computers);
-      list.push({ slot, kind, name, pos: 0 });
+      list.push({ slot, kind, name, pos: 0, rolls: 0 });
     });
     return list;
   }
 
+  // 한 칸씩 앞으로 갑니다. 100칸에 닿으면 주사위 눈이 남아도 거기서 멈춥니다.
   function pathSteps(from, roll) {
     const steps = [];
-    let pos = from, dir = 1;
-    for (let i = 0; i < roll; i++) {
-      if (pos === GOAL) dir = -1;
-      pos += dir;
-      steps.push(pos);
-    }
+    const last = Math.min(from + roll, GOAL);
+    for (let pos = from + 1; pos <= last; pos++) steps.push(pos);
     return steps;
   }
 
@@ -808,6 +870,7 @@ select {
     anim = null;
     confetti = [];
     logItems = [];
+    hideWin();
     setFace(1);
     addLog(null, '새 게임을 시작합니다. 참가: ' + players.map((p) => p.name).join(', '));
     renderSetup();
@@ -824,6 +887,7 @@ select {
     render();
 
     const roll = rollDie();
+    p.rolls = (p.rolls || 0) + 1;
     await rollDiceAnim(roll);
     if (id !== gameId) return;
 
@@ -837,8 +901,12 @@ select {
     }
     anim = null;
     const landed = p.pos;
-    let msg = '주사위 ' + roll + ' · ' + (from === 0 ? '출발점' : from + '칸') + '에서 ' + landed + '칸으로 갔습니다.';
-    if (from + roll > GOAL) msg += ' (' + GOAL + '칸을 넘어 ' + (from + roll - GOAL) + '칸 되돌아옴)';
+    const fromText = from === 0 ? '출발점' : from + '칸';
+    let msg = '주사위 ' + roll + ' · ' + fromText + '에서 ' + landed + '칸으로 갔습니다.';
+    if (landed === GOAL) {
+      msg = '주사위 ' + roll + ' · ' + fromText + '에서 ' + GOAL + '칸에 도착했습니다.';
+      if (from + roll > GOAL) msg += ' (남은 눈 ' + (from + roll - GOAL) + '개는 쓰지 않음)';
+    }
     addLog(p, msg, false);
     render();
 
@@ -859,6 +927,7 @@ select {
       busy = false;
       addLog(p, GOAL + '칸에 도착해 이겼습니다!', true);
       render();
+      showWin(true);
       celebrate(id);
       return;
     }
@@ -955,6 +1024,33 @@ select {
     draw();
   }
 
+  // 축하 메시지: 사람이 이기면 "축하합니다!", 사람이 있는데 컴퓨터가 이기면 다시 도전하라고 알려 줍니다.
+  function showWin(moveFocus) {
+    const w = players[winner];
+    if (!w) return;
+    const anyHuman = players.some((p) => p.kind === 'human');
+    const cheer = w.kind === 'human' || !anyHuman;
+    const big = tokenEl(w.slot);
+    big.id = 'winToken';
+    const oldToken = document.getElementById('winToken');
+    if (oldToken) oldToken.replaceWith(big);
+    winTitle.textContent = cheer ? '축하합니다!' : '컴퓨터 승리!';
+    winMsg.textContent = cheer
+      ? w.name + '님이 ' + GOAL + '칸에 가장 먼저 도착했습니다. 주사위를 ' + w.rolls + '번 굴렸습니다.'
+      : w.name + '의 승리입니다. 주사위를 ' + w.rolls + '번 굴렸습니다. 다시 도전해 보세요!';
+    winBox.hidden = false;
+    if (moveFocus) {
+      try { againBtn.focus({ preventScroll: true }); } catch (e) { againBtn.focus(); }
+    }
+  }
+  function hideWin() { winBox.hidden = true; }
+
+  againBtn.addEventListener('click', () => newGame(setup));
+  closeWinBtn.addEventListener('click', () => {
+    hideWin();
+    rollBtn.focus();
+  });
+
   // ---------- 참가자 설정 ----------
   const slotSelects = SLOTS.map((s, i) => {
     const row = document.createElement('div');
@@ -996,6 +1092,7 @@ select {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !winBox.hidden) { hideWin(); return; }
     if (e.key !== ' ' && e.code !== 'Space') return;
     const tag = e.target && e.target.tagName ? e.target.tagName : '';
     if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'SUMMARY'].includes(tag)) return;
@@ -1007,7 +1104,7 @@ select {
   function snapshot() {
     return {
       setup: setup.slice(),
-      players: players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos })),
+      players: players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos, rolls: p.rolls })),
       current, winner, logItems: logItems.slice()
     };
   }
@@ -1019,7 +1116,7 @@ select {
     if (ok) {
       gameId++;
       setup = data.setup;
-      players = data.players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos }));
+      players = data.players.map((p) => ({ slot: p.slot, kind: p.kind, name: p.name, pos: p.pos, rolls: Number(p.rolls) || 0 }));
       current = Number(data.current) || 0;
       winner = data.winner === null || data.winner === undefined ? null : Number(data.winner);
       logItems = Array.isArray(data.logItems) ? data.logItems : [];
@@ -1027,6 +1124,7 @@ select {
       renderSetup();
       renderLog();
       render();
+      if (winner !== null) showWin(false);
       scheduleComputer();
     } else {
       newGame(setup);
