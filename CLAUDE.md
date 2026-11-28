@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전(2D 캔버스). HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
 | `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
+| `scoreboardV1/scoreboardV1.php` | 빠른 클리어 순위 API (PHP 8.2 + PostgreSQL). 아래 「빠른 클리어 순위」 참고 |
 
 **2D와 3D의 게임 데이터는 복사본입니다.** `JUMPS`, `TRAPS`, `FABLES`, `LADDER_STORY`, `SNAKE_STORY`, `DEST_NOTES`가 두 파일에 똑같이 들어 있습니다. 한쪽을 고치면 다른 쪽도 같이 고칩니다.
 
@@ -28,10 +29,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 사이트 배포 (cafe24 ai-space)
 
-- 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 런타임 static, DB 없음, 무료 공간 `space_01`)
+- 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 무료 공간 `space_01`). 지금 런타임은 static, DB 없음이고, 빠른 클리어 순위를 위해 PHP 8.2 + PostgreSQL로 바꾸는 중입니다(아래 참고).
 - GitHub App으로 이 저장소의 **기본 브랜치**(`claude/determined-allen-1ajw3i`)를 가져옵니다. 다른 브랜치는 배포되지 않습니다.
 - **푸시만으로는 자동 반영되지 않습니다** (2026-11-28 확인: 푸시 뒤 5분 넘게 기다려도 그대로). 그래서 **푸시할 때마다 이어서 cafe24 재배포까지 합니다 (사용자 요구: 푸시하면 cafe24에 적용).** cafe24 MCP의 `external_repo`를 `action: repo_update`, `repo_name: games`, `project_name: games`로 부릅니다. 프로젝트 `source`가 `github`이므로 `update_project`는 쓰지 않습니다.
 - 반영 확인 주의: 이 서버는 없는 경로에도 `index.html`을 200으로 돌려줍니다. 상태 코드가 아니라 응답 내용으로 확인합니다.
+- **런타임·DB는 다시 배포로 바뀌지 않습니다** (2026-11-28 확인: `repo_deploy`에 `force: true`, `runtime_hint: php`, `db_hint: pgsql`을 줘도 static, DB 없음 그대로). 바꾸려면 cafe24 웹 콘솔에서 프로젝트를 지운 뒤, `repo_deploy`로 같은 이름(`games`)과 새 런타임·DB 힌트를 주어 새로 배포합니다. static 런타임에서는 `.php` 주소에도 `index.html`이 나오므로 PHP 소스는 노출되지 않습니다.
+
+## 빠른 클리어 순위
+
+첫 주사위부터 누군가 100칸에 닿을 때까지 걸린 시간을 재고, 사람이 이긴 판만 이름과 함께 기록합니다.
+
+- **서버:** `scoreboardV1/scoreboardV1.php` 하나. PHP 8.2 + PostgreSQL이고, DB 접속은 cafe24가 넣어 주는 환경 변수(`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`)만 씁니다.
+  - `GET ?board=2d|3d&limit=10` → `{ ok, board, total, scores: [{ rank, id, name, time_ms, rolls, players, day }] }`. `day`는 한국 시간 `YYYY-MM-DD`.
+  - `POST {board, name, time_ms, rolls, players}` → `{ ok, id, rank, total }`. 실패하면 `{ ok: false, error: "화면에 보일 문장" }`.
+  - 검사 범위: 이름 1~12자(제어 문자 제거, 공백 하나로), 시간 10초~2시간, 굴린 횟수 1~500, 참가자 2~4명. 같은 범위가 테이블 CHECK 조건에도 있습니다.
+  - 순위: `time_ms` 짧은 순 → `rolls` 적은 순 → `id` 작은 순. 참가자 수로 나누지 않고 표에 함께 보여 줍니다(사용자 선택).
+  - `scores` 테이블은 처음 요청 때 `ensureSchema()`가 만듭니다. 테이블 정의는 이 함수에 있습니다.
+- **게임(2D·3D 같은 코드, `Score` 모듈의 `BOARD`만 다름. 한쪽을 고치면 다른 쪽도 고침):**
+  - `takeTurn()` 처음에 아무도 굴리지 않았으면 `clearStart`를 기록하고, 100칸 도착 때 `clearMs`를 계산합니다. 이어 가기(`window.claude.hot`)로 시작한 판은 `clearStart`가 없어 기록하지 않습니다.
+  - 시작할 때 `Score.check()`가 GET을 한 번 보내 JSON `{ ok: true }`가 올 때만 이름 칸(`#scoreForm`)을 켭니다. 그래서 claude.ai 페이지, GitHub, 파일로 연 경우, static 서버에서는 이름 칸이 나오지 않습니다.
+  - 축하 창의 이름 칸 → `Score.send()` → 「n위로 기록했습니다」와 `../index.html#select` 링크를 표시합니다.
+- **첫 페이지:** 고르는 화면(`#select`)의 `#ranking`에 놀이판별 10위까지 보여 줍니다. 응답을 한 번도 못 받으면 숨긴 채로 둡니다.
+- **로컬 시험:** 이 PC에는 PHP와 PostgreSQL이 없습니다. 저장소를 그대로 서비스하면서 `scoreboardV1/scoreboardV1.php`의 GET/POST를 메모리로 흉내 내는 작은 Python 서버로 화면 쪽을 확인했습니다. 승리 장면은 그 서버가 게임 HTML의 `<head> <!--wrap-->` 뒤에 `window.claude.hot` 상태(말 94칸, 아무도 안 굴림)와 고정 눈(2D는 `crypto.getRandomValues`, 3D는 `window.__snake3dTestRoll = 6`)을 끼워 넣어 만들었습니다. 브라우저 탭이 뒤에 있으면 애니메이션이 멈추므로 시험하는 탭을 앞에 둡니다.
 
 ## 이름 규칙
 
