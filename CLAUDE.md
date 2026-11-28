@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
 | `scoreboardV1/scoreboardV1.php` | 빠른 클리어 순위 API (PHP 8.2 + PostgreSQL). 아래 「빠른 클리어 순위」 참고 |
 | `guestbookV1/guestbookV1.php` | 방명록 API (같은 DB). 아래 「방명록」 참고 |
+| `adminV1/adminV1.html`, `adminV1/adminV1.php` | 관리자 화면과 API. 순위 기록·방명록 글을 보고 지움. 아래 「관리자 화면」 참고 |
 
 **2D와 3D의 게임 데이터는 복사본입니다.** `JUMPS`, `TRAPS`, `FABLES`, `LADDER_STORY`, `SNAKE_STORY`, `DEST_NOTES`가 두 파일에 똑같이 들어 있습니다. 한쪽을 고치면 다른 쪽도 같이 고칩니다.
 
@@ -70,6 +71,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **화면:** 글은 늘 `textContent`로 넣습니다(HTML로 넣지 않음). 응답이 JSON이 아니면 서버가 없는 곳으로 보고 글쓰기 칸 대신 게임 사이트 주소를 안내합니다.
 - **실제 서버 확인:** 거절되는 요청(빈 이름, 짧은 비밀번호, 숨은 칸 채움, 없는 글 삭제)은 아무 때나 보내도 됩니다. 글쓰기까지 확인할 때는 시험 글을 올린 뒤 **같은 비밀번호로 바로 지웁니다** (2026-11-28 배포 때 이렇게 확인해서 id 1은 이미 쓰임).
 - **로컬 시험:** 저장소를 그대로 서비스하면서 두 PHP 파일의 GET/POST를 메모리로 흉내 내는 작은 Python 서버를 띄우고, `.claude/launch.json`으로 브라우저 창에서 엽니다. 시험이 끝나면 `launch.json`은 지웁니다(커밋하지 않음).
+
+## 관리자 화면
+
+주소는 https://jink0208-games.mycafe24.ai/adminV1/adminV1.html 입니다. 사이트 어디에서도 링크하지 않고, `noindex`를 붙였습니다.
+
+- **비밀번호:** 비밀번호와 그 해시는 저장소에 두지 않습니다(저장소가 공개라서).
+  - cafe24 환경 변수 `ADMIN_KEY_HASH`에 `pbkdf2_sha256:<반복 횟수>:<salt base64>:<hash base64>` 값만 넣습니다. 환경 변수에서 `$`가 바뀔 수 있어 구분자는 `:`입니다.
+  - PHP가 받은 비밀번호로 `hash_pbkdf2`를 계산해 `hash_equals`로 비교합니다. 틀리면 1초 늦게 401을 돌려주고, 환경 변수가 없으면 503을 돌려줍니다.
+  - 실제 비밀번호는 사용자 PC의 `C:\Users\K-JIN\Downloads\games_admin_password.txt`(저장소 폴더 밖)에만 있습니다. **대화나 커밋에 비밀번호를 적지 않습니다.** 확인 스크립트도 이 파일에서 읽기만 하고 출력하지 않습니다.
+  - 비밀번호를 바꿀 때는 Python 표준 라이브러리(`secrets`, `hashlib.pbkdf2_hmac`)로 새 비밀번호를 만들어 파일에 쓰고, 해시만 출력합니다. 그 해시를 cafe24 MCP `project_env`(`action: set`)로 `ADMIN_KEY_HASH`에 넣습니다. 환경 변수만 바꾸면 재시작으로 반영되므로 다시 배포하지 않아도 됩니다(2026-11-28 확인: `repo_update` 뒤에도 값이 남아 있음).
+- **API (`adminV1.php`):** POST JSON만 받습니다(비밀번호가 주소나 로그에 남지 않도록). 모든 요청에 `key`가 들어갑니다.
+  - `action`: `summary`(표별 개수), `scores`(`board`: all/2d/3d, `offset`, `limit`), `guestbook`(`offset`, `limit`), `delete_score`/`delete_guestbook`(`id`)
+  - 표가 아직 없으면 빈 목록을 돌려줍니다.
+- **화면:** 비밀번호는 `sessionStorage`에만 두어 탭을 닫으면 사라집니다. 「삭제」는 두 번 눌러야 지워집니다. 401을 받으면 처음 화면으로 돌아갑니다.
 
 ## 이름 규칙
 
