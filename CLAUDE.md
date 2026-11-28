@@ -61,7 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `index.html`의 `#guestbook` 화면과 `guestbookV1/guestbookV1.php` 하나로 동작합니다. DB와 응답 형식(`{ ok, ... }` / `{ ok: false, error }`)은 순위표와 같습니다.
 
-- **테이블 `guestbook`:** `id`, `name`(1~12자), `message`(1~200자), `password_hash`, `ip_hash`, `created_at`. 처음 요청 때 `ensureSchema()`가 만듭니다.
+- **테이블 `guestbook`:** `id`, `name`(1~12자), `message`(1~200자), `password_hash`, `ip_hash`, `created_at`, 그리고 AI 답글 열 `ai_reply`, `ai_model`, `ai_tries`, `ai_at`. 처음 요청 때 `ensureSchema()`가 만듭니다.
   - 비밀번호는 `password_hash()` 결과만 저장합니다. 글쓴이가 그 비밀번호로 자기 글을 지웁니다. 관리자용 삭제 기능은 아직 없습니다.
   - `ip_hash`는 IP를 `DB_PASSWORD`로 HMAC한 값입니다(원래 IP는 저장하지 않음). 같은 값으로 30초 안에 다시 쓰면 429를 돌려줍니다. IP는 `X-Forwarded-For`의 첫 값, 없으면 `REMOTE_ADDR`입니다. 서로 다른 사용자가 실제로 다른 값으로 잡히는지는 한 PC에서 확인할 수 없었습니다.
   - 내용 정리: 줄바꿈은 남기고 빈 줄은 하나까지, 연속 공백은 하나로, 제어 문자는 제거합니다.
@@ -70,6 +70,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `POST {action:"add", name, message, password, website}` → `{ ok, entry }`. `website`는 봇을 거르는 숨은 칸이라 값이 있으면 거절합니다.
   - `POST {action:"delete", id, password}` → `{ ok, id }`. 없는 글은 404, 비밀번호가 틀리면 403(0.4초 늦게 답함).
 - **화면:** 글은 늘 `textContent`로 넣습니다(HTML로 넣지 않음). 응답이 JSON이 아니면 서버가 없는 곳으로 보고 글쓰기 칸 대신 게임 사이트 주소를 안내합니다.
+- **AI 답글 (OpenRouter):** 글이 등록되면 화면이 `POST {action:"ai_reply", id}`를 보내고, 서버가 답글을 만들어 `guestbook`의 `ai_reply`, `ai_model`, `ai_tries`, `ai_at` 열에 저장합니다. 이 열은 `ensureSchema()`가 `ALTER TABLE … ADD COLUMN IF NOT EXISTS`로 더합니다.
+  - 모델은 `AI_MODELS` 순서대로 `google/gemma-4-31b-it:free` → `google/gemma-4-26b-a4b-it:free`입니다(사용자 지정). 앞 모델이 실패하면 다음 모델로 바로 시도합니다. 모델 하나당 20초까지 기다립니다.
+  - 키는 cafe24 환경 변수 `OPENROUTER_API_KEY`에서만 읽습니다. 사용자가 콘솔 「설정 → 환경 변수」에 직접 넣었으므로 값을 묻거나 대화에 적지 않습니다.
+  - Gemma는 system 역할을 받지 않는 제공자가 있어서, 지시문(`aiPrompt()`)을 user 메시지 하나에 넣습니다. 방문자 글 안의 지시는 따르지 말라는 규칙이 들어 있고, 답글은 200자로 자릅니다.
+  - **남용·중복 막기:** 같은 글은 `ai_at` 기준 60초 잠금으로 한 요청만 만듭니다. 글 하나당 최대 3번 시도합니다. 단 **두 모델이 모두 429(무료 모델 붐빔)면 시도 횟수를 돌려주고** 60초 뒤 다시 시도하게 합니다(응답 `retry_after`). 화면은 그만큼 기다렸다가 자동으로 다시 요청합니다(최대 5번).
+  - `ai.state`: `done`(답글 있음), `waiting`(아직 없음), `failed`(시도 3번을 다 씀). 목록을 열 때 `waiting`인 글은 차례로 요청합니다(방문자가 일찍 나가서 못 만든 글 대비).
+  - 실패 이유는 응답의 `detail`과 PHP `error_log`에 남습니다. OpenRouter 오류의 `metadata.raw`(제공자 원문)도 붙입니다.
+  - 2026-11-28 배포 직후 약 5분 동안 실제로 7번 시도했는데, 두 무료 모델 모두 매번 「temporarily rate-limited upstream」(429)이었습니다. 그래서 **실제 답글이 저장되는 것은 아직 확인하지 못했습니다.** 키 인증, 모델 순서, 실패 처리, 429 때 시도 횟수 돌려주기(4번 시도 뒤에도 `waiting`)는 확인했습니다.
+  - 무료 모델이 계속 막히면 쓸 수 있는 방법: OpenRouter에 자기 Google AI Studio 키 등록(BYOK), 또는 같은 모델의 유료판(`google/gemma-4-31b-it` 약 $0.0002/답글, `google/gemma-4-26b-a4b-it` 약 $0.00007/답글)을 `AI_MODELS` 끝에 예비로 추가. 유료판 추가는 사용자 승인이 필요합니다.
 - **실제 서버 확인:** 거절되는 요청(빈 이름, 짧은 비밀번호, 숨은 칸 채움, 없는 글 삭제)은 아무 때나 보내도 됩니다. 글쓰기까지 확인할 때는 시험 글을 올린 뒤 **같은 비밀번호로 바로 지웁니다** (2026-11-28 배포 때 이렇게 확인해서 id 1은 이미 쓰임).
 - **로컬 시험:** 저장소를 그대로 서비스하면서 두 PHP 파일의 GET/POST를 메모리로 흉내 내는 작은 Python 서버를 띄우고, `.claude/launch.json`으로 브라우저 창에서 엽니다. 시험이 끝나면 `launch.json`은 지웁니다(커밋하지 않음).
 
