@@ -29,11 +29,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 사이트 배포 (cafe24 ai-space)
 
-- 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 무료 공간 `space_01`). 지금 런타임은 static, DB 없음이고, 빠른 클리어 순위를 위해 PHP 8.2 + PostgreSQL로 바꾸는 중입니다(아래 참고).
+- 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 무료 공간 `space_01`, 런타임 PHP 8.2, DB PostgreSQL). 2026-11-28에 static 앱을 웹 콘솔에서 지우고 이 구성으로 새로 배포했습니다.
 - GitHub App으로 이 저장소의 **기본 브랜치**(`claude/determined-allen-1ajw3i`)를 가져옵니다. 다른 브랜치는 배포되지 않습니다.
 - **푸시만으로는 자동 반영되지 않습니다** (2026-11-28 확인: 푸시 뒤 5분 넘게 기다려도 그대로). 그래서 **푸시할 때마다 이어서 cafe24 재배포까지 합니다 (사용자 요구: 푸시하면 cafe24에 적용).** cafe24 MCP의 `external_repo`를 `action: repo_update`, `repo_name: games`, `project_name: games`로 부릅니다. 프로젝트 `source`가 `github`이므로 `update_project`는 쓰지 않습니다.
 - 반영 확인 주의: 이 서버는 없는 경로에도 `index.html`을 200으로 돌려줍니다. 상태 코드가 아니라 응답 내용으로 확인합니다.
-- **런타임·DB는 다시 배포로 바뀌지 않습니다** (2026-11-28 확인: `repo_deploy`에 `force: true`, `runtime_hint: php`, `db_hint: pgsql`을 줘도 static, DB 없음 그대로). 바꾸려면 cafe24 웹 콘솔에서 프로젝트를 지운 뒤, `repo_deploy`로 같은 이름(`games`)과 새 런타임·DB 힌트를 주어 새로 배포합니다. static 런타임에서는 `.php` 주소에도 `index.html`이 나오므로 PHP 소스는 노출되지 않습니다.
+- **런타임·DB는 다시 배포로 바뀌지 않습니다** (2026-11-28 확인: `repo_deploy`에 `force: true`, `runtime_hint: php`, `db_hint: pgsql`을 줘도 그대로였음). 바꾸려면 사용자가 cafe24 웹 콘솔(https://hosting.cafe24.com/?controller=myservice_aispace_main)에서 **공간이 아니라 그 안의 앱**만 지운 뒤, `repo_deploy`로 같은 이름(`games`)과 새 런타임·DB 힌트를 주어 새로 배포합니다. 앱 삭제는 MCP 도구로 할 수 없습니다.
+- **`repo_update`는 저장소에서 지운 파일을 서버에서 지우지 않습니다** (추가·덮어쓰기만 함). 그래서 서버에 `scoreboardV1/cleanupV1.php`가 남아 있습니다. 배포 확인 중 실수로 넣은 시험 기록 id 1 한 건만 지우는 1회용 파일이라 지금은 아무 일도 하지 않습니다(그 기록은 이미 지웠고 id는 다시 쓰이지 않음). 파일을 완전히 없애려면 새로 배포해야 합니다.
+- **실제 순위 DB를 직접 고칠 도구가 없습니다.** `import_database`는 이 앱에서 `NO_DB` 오류가 납니다. 그래서 배포 확인 때 올바른 POST를 보내면 진짜 기록으로 남습니다. 확인은 GET과 잘못된 POST(400이 나오는 값)로만 합니다.
 
 ## 빠른 클리어 순위
 
