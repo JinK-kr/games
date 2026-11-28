@@ -30,7 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 런타임 static, DB 없음, 무료 공간 `space_01`)
 - GitHub App으로 이 저장소의 **기본 브랜치**(`claude/determined-allen-1ajw3i`)를 가져옵니다. 다른 브랜치는 배포되지 않습니다.
-- **푸시만으로는 자동 반영되지 않습니다** (2026-11-28 확인: 푸시 뒤 5분 넘게 기다려도 그대로). 푸시한 뒤 cafe24 MCP의 `external_repo`를 `action: repo_update`, `repo_name: games`, `project_name: games`로 불러 다시 배포합니다. 프로젝트 `source`가 `github`이므로 `update_project`는 쓰지 않습니다.
+- **푸시만으로는 자동 반영되지 않습니다** (2026-11-28 확인: 푸시 뒤 5분 넘게 기다려도 그대로). 그래서 **푸시할 때마다 이어서 cafe24 재배포까지 합니다 (사용자 요구: 푸시하면 cafe24에 적용).** cafe24 MCP의 `external_repo`를 `action: repo_update`, `repo_name: games`, `project_name: games`로 부릅니다. 프로젝트 `source`가 `github`이므로 `update_project`는 쓰지 않습니다.
 - 반영 확인 주의: 이 서버는 없는 경로에도 `index.html`을 200으로 돌려줍니다. 상태 코드가 아니라 응답 내용으로 확인합니다.
 
 ## 이름 규칙
