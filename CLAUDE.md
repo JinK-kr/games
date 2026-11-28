@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 폴더 | 내용 |
 |---|---|
+| `index.html` | 저장소 첫 화면(GitHub Pages 시작 주소). 2D·3D 게임으로 가는 카드 두 장만 있고 게임 코드는 없음. 두 게임 파일을 상대 경로로 연결하므로, 게임 폴더나 파일 이름을 바꾸면 이 파일의 `href` 두 곳도 고침 |
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전(2D 캔버스). HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
 | `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
@@ -28,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 새 파일과 폴더 이름은 `이름V숫자` 형식입니다(예: `snake_dice_webV1.html`).
 - Cargo 패키지 이름은 snake_case로 씁니다(`snake_dice_game_v1`). 대문자를 넣으면 `cargo new`가 경고를 냅니다.
-- Rust 모듈 파일(`board.rs` 등)과 `main.rs`, `lib.rs`, `CLAUDE.md`는 도구가 정한 이름이라 이 규칙의 예외입니다.
+- Rust 모듈 파일(`board.rs` 등)과 `main.rs`, `lib.rs`, `CLAUDE.md`는 도구가 정한 이름이라 이 규칙의 예외입니다. 루트의 `index.html`도 GitHub Pages가 정한 이름이라 예외입니다.
 
 ## Rust 버전 (`snake_dice_gameV1/`)
 
