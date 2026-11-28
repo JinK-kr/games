@@ -844,6 +844,9 @@ body:has(#select:target) .home, body:has(#guestbook:target) .home { display: non
       parts.push(model);
     } else if (ai.state === 'failed') {
       text.textContent = 'AI 답글을 만들지 못했습니다.';
+    } else if (opts && opts.wait) {
+      text.textContent = opts.wait;
+      text.classList.add('is-waiting');
     } else if (opts && opts.error) {
       text.textContent = opts.error;
       const retry = document.createElement('button');
@@ -860,17 +863,19 @@ body:has(#select:target) .home, body:has(#guestbook:target) .home { display: non
   }
 
   // 서버에 AI 답글을 요청. 무료 모델이라 몇 초~수십 초 걸릴 수 있음.
-  // 다른 방문자의 요청이 이미 만들고 있으면(busy) 8초 뒤 다시 확인
+  // - 다른 요청이 이미 만들고 있거나 잠겨 있으면(busy) 8초마다 다시 확인 (최대 10번)
+  // - 무료 모델이 붐벼서 실패하면(retry_after) 그만큼 기다렸다가 자동으로 다시 요청 (이 화면에서 최대 5번)
   const aiBusy = new Set();
+  const aiAutoRetries = new Map();
   async function requestAiReply(li, poll = 0) {
     const id = Number(li.dataset.id);
     if (aiBusy.has(id)) return;
     aiBusy.add(id);
-    renderAi(li, { state: 'waiting' });
+    if (poll === 0) renderAi(li, { state: 'waiting' });
     try {
       const data = await gbPost({ action: 'ai_reply', id });
       if (!li.isConnected) return;
-      if (data.busy && poll < 6) {
+      if (data.busy && poll < 10) {
         setTimeout(() => requestAiReply(li, poll + 1), 8000);
         return;
       }
@@ -883,7 +888,16 @@ body:has(#select:target) .home, body:has(#guestbook:target) .home { display: non
         return;
       }
       const ai = err.data && err.data.entry ? err.data.entry.ai : { state: 'waiting' };
-      renderAi(li, ai, { error: err.fromServer && err.message ? err.message : 'AI 답글을 받지 못했습니다. 잠시 뒤 다시 시도해 주세요.' });
+      const message = err.fromServer && err.message ? err.message : 'AI 답글을 받지 못했습니다. 잠시 뒤 다시 시도해 주세요.';
+      const retryAfter = err.data && err.data.retry_after;
+      const used = aiAutoRetries.get(id) || 0;
+      if (retryAfter && ai.state === 'waiting' && used < 5) {
+        aiAutoRetries.set(id, used + 1);
+        renderAi(li, ai, { wait: message });
+        setTimeout(() => requestAiReply(li, 1), (retryAfter + 3) * 1000);
+        return;
+      }
+      renderAi(li, ai, { error: message });
     } finally {
       aiBusy.delete(id);
     }

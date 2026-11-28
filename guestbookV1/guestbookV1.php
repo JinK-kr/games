@@ -30,7 +30,7 @@ const AI_MODELS = ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free
 const AI_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const AI_TIMEOUT = 20;       // 모델 하나당 기다리는 최대 초
 const AI_TRIES_MAX = 3;      // 글 하나당 AI 요청 최대 횟수 (남용·비용 막기)
-const AI_LOCK_SECONDS = 60;  // 한 요청이 답글을 만드는 동안 같은 글의 다른 요청은 기다림
+const AI_LOCK_SECONDS = 60;  // 한 요청이 답글을 만드는 동안(또는 붐벼서 실패한 뒤) 같은 글의 다음 요청은 기다림
 const AI_REPLY_MAX = 200;    // 저장할 답글 최대 글자 수
 
 function reply(int $status, array $body): never
@@ -203,7 +203,7 @@ function aiPrompt(string $name, string $message): string
         . "방문자 글:\n\"\"\"\n{$message}\n\"\"\"";
 }
 
-// 모델 하나 부르기. [답글 원문 또는 null, 실패 이유]
+// 모델 하나 부르기. [답글 원문 또는 null, 실패 이유, HTTP 상태]
 function callModel(string $key, string $model, string $prompt): array
 {
     $body = json_encode([
@@ -234,7 +234,7 @@ function callModel(string $key, string $model, string $prompt): array
         $error = curl_error($ch);
         curl_close($ch);
         if (!is_string($raw)) {
-            return [null, 'network: ' . $error];
+            return [null, 'network: ' . $error, 0];
         }
     } else {
         $context = stream_context_create(['http' => [
@@ -247,7 +247,7 @@ function callModel(string $key, string $model, string $prompt): array
         $raw = @file_get_contents(AI_URL, false, $context);
         $status = isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m) === 1 ? (int) $m[1] : 0;
         if (!is_string($raw)) {
-            return [null, 'network'];
+            return [null, 'network', 0];
         }
     }
     $data = json_decode($raw, true);
@@ -259,9 +259,9 @@ function callModel(string $key, string $model, string $prompt): array
         if (is_string($raw2) && $raw2 !== '') {
             $reason .= ' / ' . $raw2;
         }
-        return [null, "HTTP {$status}: " . cut((string) $reason, 300)];
+        return [null, "HTTP {$status}: " . cut((string) $reason, 300), $status];
     }
-    return [$text, ''];
+    return [$text, '', $status];
 }
 
 // 모델이 붙이는 따옴표·마크다운·생각 흔적을 걷어 내고 한 문단으로
@@ -274,20 +274,24 @@ function cleanReply(string $text): ?string
     return $text === '' ? null : cut($text, AI_REPLY_MAX);
 }
 
-// 모델을 차례로 시도. [답글, 모델] 또는 [null, 실패 이유들]
+// 모델을 차례로 시도. [답글, 모델, false] 또는 [null, 실패 이유들, 모두 429(붐빔)였는지]
 function makeAiReply(string $key, string $name, string $message): array
 {
     $prompt = aiPrompt($name, $message);
     $reasons = [];
+    $allBusy = true;
     foreach (AI_MODELS as $model) {
-        [$text, $reason] = callModel($key, $model, $prompt);
+        [$text, $reason, $status] = callModel($key, $model, $prompt);
         $clean = $text === null ? null : cleanReply($text);
         if ($clean !== null) {
-            return [$clean, $model];
+            return [$clean, $model, false];
+        }
+        if ($status !== 429) {
+            $allBusy = false;
         }
         $reasons[] = $model . ' → ' . ($reason !== '' ? $reason : 'empty');
     }
-    return [null, implode(' | ', $reasons)];
+    return [null, implode(' | ', $reasons), $allBusy];
 }
 
 function findEntry(PDO $pdo, int $id): ?array
@@ -416,17 +420,23 @@ try {
             }
 
             set_time_limit(AI_TIMEOUT * count(AI_MODELS) + 15);
-            [$text, $info] = makeAiReply($key, (string) $mine['name'], (string) $mine['message']);
+            [$text, $info, $busy] = makeAiReply($key, (string) $mine['name'], (string) $mine['message']);
             if ($text === null) {
                 error_log('guestbookV1 ai_reply #' . $id . ': ' . $info);
-                // 다음 시도를 바로 할 수 있게 잠금 시각을 풀어 둠
-                $unlock = $pdo->prepare('UPDATE guestbook SET ai_at = NULL WHERE id = :id');
-                $unlock->bindValue(':id', $id, PDO::PARAM_INT);
-                $unlock->execute();
+                // 무료 모델이 붐벼서(모두 429) 실패했으면 시도 횟수를 돌려주고 1분 동안 잠가 둠(1분에 한 번만 다시 시도).
+                // 다른 이유로 실패했으면 시도 횟수는 쓴 것으로 두고 잠금을 풀어 바로 다시 시도할 수 있게 함
+                $after = $pdo->prepare($busy
+                    ? 'UPDATE guestbook SET ai_tries = GREATEST(ai_tries - 1, 0), ai_at = now() WHERE id = :id'
+                    : 'UPDATE guestbook SET ai_at = NULL WHERE id = :id');
+                $after->bindValue(':id', $id, PDO::PARAM_INT);
+                $after->execute();
                 $row = findEntry($pdo, $id);
                 reply(502, [
                     'ok' => false,
-                    'error' => 'AI가 지금 답글을 쓰지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+                    'error' => $busy
+                        ? 'AI가 지금 붐벼서 답글을 쓰지 못했습니다. 1분쯤 뒤에 다시 시도합니다.'
+                        : 'AI가 지금 답글을 쓰지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+                    'retry_after' => $busy ? AI_LOCK_SECONDS : 0,
                     'detail' => cut($info, 300),
                     'entry' => $row === null ? null : entryOut($row),
                 ]);
