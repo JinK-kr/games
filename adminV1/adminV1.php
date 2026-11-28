@@ -6,6 +6,10 @@
 //   {key, action:"scores", board:"all"|"2d"|"3d", offset, limit} → 순위 기록, 최근에 올린 순
 //   {key, action:"guestbook", offset, limit}                    → 방명록 글, 최근 글 순
 //   {key, action:"delete_score", id} / {key, action:"delete_guestbook", id}
+//   DB 보기(dbV1.html):
+//   {key, action:"db_info"}                                     → DB 이름·버전·크기, public 스키마의 표 목록(행 수, 크기)
+//   {key, action:"db_table", table, offset, limit}              → 열, 제약 조건, 인덱스, 행(최근 순)
+//   {key, action:"db_query", sql}                               → 읽기 전용 SQL 한 문장 실행(결과 최대 500행)
 //
 // 비밀번호 자체는 어디에도 저장하지 않는다. cafe24 환경 변수 ADMIN_KEY_HASH에
 // "pbkdf2_sha256:<반복 횟수>:<salt base64>:<hash base64>" 형식의 값만 넣어 두고, 받은 key로 같은 값을 계산해 비교한다.
@@ -72,6 +76,7 @@ function connect(): PDO
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_TIMEOUT => 5,
+        PDO::ATTR_EMULATE_PREPARES => false,  // 서버 쪽 prepare: SQL 실행 칸에서 한 번에 한 문장만 실행되게 함
     ]);
 }
 
@@ -102,6 +107,55 @@ function countRows(PDO $pdo, string $sql, array $params = []): int
 }
 
 const KST = "to_char(created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS') AS at";
+const QUERY_ROWS_MAX = 500;
+const CELL_MAX = 300;  // DB 보기에서 한 칸에 보여 줄 최대 글자 수
+
+function quoteIdent(string $name): string
+{
+    return '"' . str_replace('"', '""', $name) . '"';
+}
+
+// public 스키마의 표 이름 목록. db_table은 이 목록에 있는 이름만 받는다(SQL에 이름을 넣기 전 확인)
+function publicTables(PDO $pdo): array
+{
+    return $pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// 결과 한 줄을 화면용 문자열 배열로 (NULL은 null 그대로, 긴 값은 잘라서)
+function cellsOut(array $row): array
+{
+    return array_map(static function (mixed $v): ?string {
+        if ($v === null) {
+            return null;
+        }
+        if (is_bool($v)) {
+            return $v ? 'true' : 'false';
+        }
+        if (is_resource($v)) {
+            return '(바이너리)';
+        }
+        return cut((string) $v, CELL_MAX);
+    }, $row);
+}
+
+// 앞에서 $max글자까지만 (mbstring 없이 동작. 올바른 UTF-8이 아니면 바이트로 자름)
+function cut(string $s, int $max): string
+{
+    if (preg_match('/^.{0,' . $max . '}/us', $s, $m) !== 1) {
+        return strlen($s) > $max ? substr($s, 0, $max) . '…' : $s;
+    }
+    return strlen($m[0]) < strlen($s) ? $m[0] . '…' : $s;
+}
+
+function columnNames(PDOStatement $stmt): array
+{
+    $names = [];
+    for ($i = 0; $i < $stmt->columnCount(); $i++) {
+        $meta = $stmt->getColumnMeta($i);
+        $names[] = $meta === false ? 'column' . ($i + 1) : (string) $meta['name'];
+    }
+    return $names;
+}
 
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -198,6 +252,92 @@ try {
             fail(404, '이미 지워졌거나 없는 항목입니다.');
         }
         reply(200, ['ok' => true, 'id' => $id]);
+    }
+
+    if ($action === 'db_info') {
+        $db = $pdo->query("SELECT current_database() AS name, current_setting('server_version') AS version, pg_size_pretty(pg_database_size(current_database())) AS size")->fetch();
+        $tables = [];
+        foreach (publicTables($pdo) as $name) {
+            $size = $pdo->prepare('SELECT pg_size_pretty(pg_total_relation_size(to_regclass(:name)))');
+            $size->execute([':name' => 'public.' . quoteIdent($name)]);
+            $tables[] = ['name' => $name, 'rows' => countRows($pdo, 'SELECT count(*) FROM public.' . quoteIdent($name)), 'size' => $size->fetchColumn()];
+        }
+        reply(200, ['ok' => true, 'db' => $db, 'tables' => $tables]);
+    }
+
+    if ($action === 'db_table') {
+        $table = $input['table'] ?? '';
+        if (!is_string($table) || !in_array($table, publicTables($pdo), true)) {
+            fail(404, '없는 표입니다.');
+        }
+        $qualified = 'public.' . quoteIdent($table);
+        $cols = $pdo->prepare("SELECT column_name AS name, data_type AS type, is_nullable = 'YES' AS nullable, column_default AS default_value
+                               FROM information_schema.columns WHERE table_schema = 'public' AND table_name = :t ORDER BY ordinal_position");
+        $cols->execute([':t' => $table]);
+        $columns = $cols->fetchAll();
+        $cons = $pdo->prepare('SELECT conname AS name, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = to_regclass(:q) ORDER BY conname');
+        $cons->execute([':q' => $qualified]);
+        $idx = $pdo->prepare("SELECT indexname AS name, indexdef AS def FROM pg_indexes WHERE schemaname = 'public' AND tablename = :t ORDER BY indexname");
+        $idx->execute([':t' => $table]);
+
+        $hasId = in_array('id', array_column($columns, 'name'), true);
+        $rows = $pdo->prepare("SELECT * FROM {$qualified}" . ($hasId ? ' ORDER BY id DESC' : '') . ' LIMIT :limit OFFSET :offset');
+        $rows->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $rows->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $rows->execute();
+        reply(200, [
+            'ok' => true,
+            'table' => $table,
+            'columns' => array_map(static fn (array $c): array => [
+                'name' => $c['name'], 'type' => $c['type'], 'nullable' => (bool) $c['nullable'], 'default' => $c['default_value'],
+            ], $columns),
+            'constraints' => $cons->fetchAll(),
+            'indexes' => $idx->fetchAll(),
+            'total' => countRows($pdo, "SELECT count(*) FROM {$qualified}"),
+            'fields' => columnNames($rows),
+            'rows' => array_map('cellsOut', $rows->fetchAll(PDO::FETCH_NUM)),
+        ]);
+    }
+
+    // 읽기 전용 SQL. 세 겹으로 막는다:
+    //   1) 첫 낱말이 SELECT/WITH/EXPLAIN/SHOW/TABLE/VALUES가 아니면 거절
+    //   2) prepare(서버 쪽 준비)라서 한 번에 한 문장만 실행됨 (「SELECT 1; DELETE …」는 오류)
+    //   3) BEGIN READ ONLY 안에서 실행하고 끝나면 늘 ROLLBACK (쓰기 문장은 PostgreSQL이 거절, 되더라도 되돌림)
+    if ($action === 'db_query') {
+        $sql = $input['sql'] ?? '';
+        if (!is_string($sql)) {
+            fail(400, 'SQL을 입력해 주세요.');
+        }
+        $sql = rtrim(trim($sql), "; \n\r\t");
+        if ($sql === '' || strlen($sql) > 4000) {
+            fail(400, 'SQL은 1~4000자로 입력해 주세요.');
+        }
+        if (preg_match('/^\s*(select|with|explain|show|table|values)\b/i', $sql) !== 1) {
+            fail(400, '읽기만 하는 SQL(SELECT, WITH, EXPLAIN, SHOW, TABLE, VALUES)만 실행할 수 있습니다.');
+        }
+        $pdo->exec('BEGIN READ ONLY');
+        $pdo->exec("SET LOCAL statement_timeout = '5s'");
+        $started = microtime(true);
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute();
+            $fields = columnNames($stmt);
+            $rows = [];
+            $more = false;
+            while (($row = $stmt->fetch(PDO::FETCH_NUM)) !== false) {
+                if (count($rows) >= QUERY_ROWS_MAX) {
+                    $more = true;
+                    break;
+                }
+                $rows[] = cellsOut($row);
+            }
+        } catch (PDOException $e) {
+            $pdo->exec('ROLLBACK');
+            $message = preg_replace('/^SQLSTATE\[\w+\]:\s*/', '', $e->getMessage());
+            fail(400, 'SQL 오류: ' . cut((string) $message, 400));
+        }
+        $pdo->exec('ROLLBACK');
+        reply(200, ['ok' => true, 'fields' => $fields, 'rows' => $rows, 'more' => $more, 'ms' => (int) round((microtime(true) - $started) * 1000)]);
     }
 
     fail(400, '지원하지 않는 요청입니다.');

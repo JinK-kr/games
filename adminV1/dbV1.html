@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>DB 보기 · 뱀주사위놀이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* DB 보기: cafe24 PostgreSQL의 표 목록·구조·데이터를 보고, 읽기 전용 SQL을 실행함.
+   관리자 비밀번호로 잠김(adminV1.php와 같은 비밀번호, 같은 sessionStorage 키). 사이트 어디에서도 링크하지 않음 */
+:root {
+  --bg: #EAF0FA;
+  --surface: #FFFFFF;
+  --ink: #1B1E3C;
+  --muted: #565B80;
+  --line: #C9D1E6;
+  --chip: #E4E9F5;
+  --accent: #D62839;
+  --accent-ink: #FFFFFF;
+  --block-shadow: #1B1E3C;
+  --band: #FFC93C;
+  --band-ink: #1B1E3C;
+  --title: #D62839;
+  --focus: #2F6BFF;
+  --code-bg: #F4F6FB;
+  --font-display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-mono: "IBM Plex Mono", "D2Coding", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11132A;
+    --surface: #1B1E3C;
+    --ink: #EEF0FA;
+    --muted: #A9AED0;
+    --line: #353A6C;
+    --chip: #282C55;
+    --accent: #FF5A67;
+    --accent-ink: #1B0A0C;
+    --block-shadow: #05060F;
+    --focus: #8DACFF;
+    --code-bg: #15172F;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; word-break: keep-all; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+[tabindex="-1"]:focus { outline: none; }
+[hidden] { display: none !important; }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+
+.band { background: var(--band); color: var(--band-ink); padding: 20px 0 16px; border-bottom: 4px solid var(--band-ink); }
+.inner { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+.band .inner { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.eyebrow { margin: 0 0 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 2.4rem; line-height: 1; color: var(--title); text-shadow: 3px 3px 0 var(--band-ink); }
+.band nav { display: flex; gap: 14px; }
+.band a { color: var(--band-ink); font-weight: 700; font-size: 0.9rem; }
+main.inner { padding-top: 24px; padding-bottom: 48px; }
+
+.card { background: var(--surface); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 6px 6px 0 var(--block-shadow); padding: 18px 20px; min-width: 0; }
+h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; line-height: 1.2; }
+h3 { margin: 16px 0 6px; font-size: 1rem; }
+.login { max-width: 420px; display: grid; gap: 10px; }
+.login p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+input[type="password"] { flex: 1; min-width: 12em; font: inherit; padding: 9px 12px; color: var(--ink); background: var(--bg); border: 2px solid var(--ink); border-radius: 10px; }
+button { font: inherit; font-weight: 700; cursor: pointer; color: var(--ink); background: var(--chip); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 16px; }
+button.primary { color: var(--accent-ink); background: var(--accent); }
+button:disabled { opacity: 0.5; cursor: wait; }
+.note { margin: 0; font-weight: 700; font-size: 0.9rem; }
+.note.is-error { color: var(--accent); white-space: pre-wrap; }
+.muted { color: var(--muted); }
+
+.panel { display: grid; gap: 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.chips li { padding: 6px 14px; font-weight: 700; background: var(--surface); border: 2px solid var(--line); border-radius: 999px; }
+.chips li span { color: var(--muted); font-weight: 600; margin-right: 6px; }
+
+.browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (min-width: 900px) {
+  .browse { grid-template-columns: 240px minmax(0, 1fr); }
+}
+.tables { display: grid; gap: 8px; }
+.tables button { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; background: var(--surface); }
+.tables button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+.tables .t-name { font-family: var(--font-mono); font-size: 0.95rem; }
+.tables .t-meta { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: 0.8rem; color: var(--muted); background: var(--code-bg); white-space: nowrap; position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: none; }
+/* 칸은 줄바꿈 없이(표가 넓으면 가로 스크롤), 너무 긴 값은 …로 줄이고 마우스를 올리면 전체가 보임 */
+td { font-family: var(--font-mono); font-size: 0.85rem; white-space: pre; max-width: 32em; overflow: hidden; text-overflow: ellipsis; }
+td.null { color: var(--muted); font-style: italic; }
+.defs { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.defs li { padding: 8px 10px; background: var(--code-bg); border-radius: 8px; overflow-wrap: anywhere; }
+.defs b { font-family: var(--font-mono); font-size: 0.85rem; margin-right: 8px; }
+.more { margin-top: 10px; border-radius: 999px; }
+
+.sql { display: grid; gap: 10px; }
+.sql textarea { width: 100%; min-height: 110px; resize: vertical; font-family: var(--font-mono); font-size: 0.95rem; padding: 10px 12px; color: var(--ink); background: var(--code-bg); border: 2px solid var(--ink); border-radius: 10px; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; }
+.examples button { font-size: 0.8rem; padding: 3px 12px; border-radius: 999px; font-weight: 600; }
+.sql-info { margin: 0; font-size: 0.85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="band">
+  <div class="inner">
+    <div>
+      <p class="eyebrow">뱀주사위놀이 · cafe24 PostgreSQL</p>
+      <h1 id="pageTitle" tabindex="-1">DB 보기</h1>
+    </div>
+    <nav>
+      <a href="adminV1.html">관리자 화면</a>
+      <a href="../index.html">사이트로 가기</a>
+    </nav>
+  </div>
+</header>
+
+<main class="inner">
+  <form class="card login" id="loginForm">
+    <h2>관리자 비밀번호</h2>
+    <p>DB의 표 구조와 데이터를 보고, 읽기만 하는 SQL을 실행할 수 있습니다. 데이터를 바꾸는 SQL은 실행되지 않습니다.</p>
+    <div class="row">
+      <input type="password" id="keyInput" autocomplete="current-password" aria-label="관리자 비밀번호" maxlength="200">
+      <button type="submit" class="primary" id="loginBtn">들어가기</button>
+    </div>
+    <p class="note" id="loginNote" role="status" hidden></p>
+  </form>
+
+  <div class="panel" id="panel" hidden>
+    <ul class="chips" id="dbChips" aria-label="DB 정보"></ul>
+
+    <div class="browse">
+      <nav class="tables" id="tableList" aria-label="표 목록"></nav>
+      <section class="card" id="detail" aria-labelledby="detailTitle">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="detailTitle">표를 고르세요</h2>
+          <span class="muted" id="detailMeta"></span>
+        </div>
+        <p class="note" id="detailNote" role="status" hidden></p>
+        <div id="detailBody" hidden>
+          <h3>열 (구조)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">열 이름</th><th scope="col">자료형</th><th scope="col">빈 값(NULL)</th><th scope="col">기본값</th></tr></thead>
+              <tbody id="colBody"></tbody>
+            </table>
+          </div>
+          <h3>제약 조건</h3>
+          <ul class="defs" id="consList"></ul>
+          <h3>인덱스</h3>
+          <ul class="defs" id="idxList"></ul>
+          <h3 id="dataTitle">데이터</h3>
+          <div class="table-wrap">
+            <table>
+              <thead id="dataHead"></thead>
+              <tbody id="dataBody"></tbody>
+            </table>
+          </div>
+          <p class="muted" id="dataEmpty" hidden>행이 없습니다.</p>
+          <button type="button" class="more" id="dataMore" hidden>더 보기</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="card sql" aria-labelledby="sqlTitle">
+      <h2 id="sqlTitle">SQL 실행 (읽기 전용)</h2>
+      <p class="sql-info">SELECT처럼 읽기만 하는 SQL 한 문장을 실행합니다. 결과는 500행까지 보이고, 5초가 넘으면 멈춥니다. Ctrl+Enter로도 실행됩니다.</p>
+      <div class="examples" id="examples" aria-label="예시 SQL">
+        <button type="button" data-sql="SELECT board, name, time_ms, rolls, players FROM scores ORDER BY time_ms, rolls LIMIT 10">순위 10위까지</button>
+        <button type="button" data-sql="SELECT board, count(*) AS records, min(time_ms) AS best_ms, round(avg(time_ms)) AS avg_ms FROM scores GROUP BY board">놀이판별 기록 수·최고·평균</button>
+        <button type="button" data-sql="SELECT id, name, message, created_at FROM guestbook ORDER BY id DESC LIMIT 20">방명록 최근 20개</button>
+        <button type="button" data-sql="SELECT date(created_at AT TIME ZONE 'Asia/Seoul') AS day, count(*) AS posts FROM guestbook GROUP BY day ORDER BY day DESC">날짜별 방명록 수</button>
+        <button type="button" data-sql="SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position">모든 표의 열</button>
+      </div>
+      <label for="sqlInput" class="muted" style="font-size:0.85rem;font-weight:700">SQL</label>
+      <textarea id="sqlInput" spellcheck="false">SELECT * FROM scores ORDER BY time_ms LIMIT 10</textarea>
+      <div class="row">
+        <button type="button" class="primary" id="runBtn">실행</button>
+        <span class="sql-info" id="sqlInfo" role="status"></span>
+      </div>
+      <p class="note is-error" id="sqlError" hidden></p>
+      <div class="table-wrap" id="sqlResultWrap" hidden>
+        <table>
+          <thead id="sqlHead"></thead>
+          <tbody id="sqlBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const API = 'adminV1.php';
+  const PAGE = 50;
+  const STORE = 'snakeAdminKey';  // 관리자 화면과 같은 키: 같은 탭에서 두 페이지를 오갈 때 다시 입력하지 않음
+  const $ = (id) => document.getElementById(id);
+  const loginForm = $('loginForm'), keyInput = $('keyInput'), loginBtn = $('loginBtn'), loginNote = $('loginNote');
+  const panel = $('panel'), dbChips = $('dbChips'), tableList = $('tableList');
+  const detailTitle = $('detailTitle'), detailMeta = $('detailMeta'), detailNote = $('detailNote'), detailBody = $('detailBody');
+  const colBody = $('colBody'), consList = $('consList'), idxList = $('idxList');
+  const dataHead = $('dataHead'), dataBody = $('dataBody'), dataEmpty = $('dataEmpty'), dataMore = $('dataMore'), dataTitle = $('dataTitle');
+  const sqlInput = $('sqlInput'), runBtn = $('runBtn'), sqlInfo = $('sqlInfo'), sqlError = $('sqlError');
+  const sqlResultWrap = $('sqlResultWrap'), sqlHead = $('sqlHead'), sqlBody = $('sqlBody');
+
+  let key = sessionStorage.getItem(STORE) || '';
+  let current = null;   // 지금 보는 표 이름
+  let offset = 0;
+  let seq = 0;
+
+  function setNote(el, text, isError) {
+    el.textContent = text;
+    el.classList.toggle('is-error', !!isError);
+    el.hidden = !text;
+  }
+
+  async function call(body) {
+    const res = await fetch(API, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ key }, body))
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* JSON이 아니면 서버가 없는 곳 */ }
+    if (!data) throw Object.assign(new Error('관리자 서버에 연결하지 못했습니다. 게임 사이트 주소에서 열어 주세요.'), { status: res.status });
+    if (data.ok !== true) throw Object.assign(new Error(data.error || '요청을 처리하지 못했습니다.'), { status: res.status });
+    return data;
+  }
+
+  function cell(value, tag) {
+    const el = document.createElement(tag || 'td');
+    if (value === null || value === undefined) {
+      el.textContent = 'NULL';
+      el.className = 'null';
+    } else {
+      el.textContent = String(value);
+      if (el.textContent.length > 30) el.title = el.textContent;
+    }
+    return el;
+  }
+
+  function headRow(thead, names) {
+    const tr = document.createElement('tr');
+    names.forEach((n) => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.textContent = n;
+      tr.append(th);
+    });
+    thead.replaceChildren(tr);
+  }
+
+  function rowEl(values) {
+    const tr = document.createElement('tr');
+    values.forEach((v) => tr.append(cell(v)));
+    return tr;
+  }
+
+  function defItems(list, items, emptyText) {
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'muted';
+      li.textContent = emptyText;
+      list.replaceChildren(li);
+      return;
+    }
+    list.replaceChildren(...items.map((it) => {
+      const li = document.createElement('li');
+      const b = document.createElement('b');
+      b.textContent = it.name;
+      const code = document.createElement('code');
+      code.textContent = it.def;
+      li.append(b, code);
+      return li;
+    }));
+  }
+
+  async function loadInfo() {
+    const data = await call({ action: 'db_info' });
+    dbChips.replaceChildren(...[['DB', data.db.name], ['PostgreSQL', data.db.version], ['크기', data.db.size], ['표', data.tables.length + '개']].map(([label, value]) => {
+      const li = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = label;
+      li.append(span, document.createTextNode(value));
+      return li;
+    }));
+    tableList.replaceChildren(...data.tables.map((t) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.table = t.name;
+      btn.setAttribute('aria-pressed', String(t.name === current));
+      const name = document.createElement('span');
+      name.className = 't-name';
+      name.textContent = t.name;
+      const meta = document.createElement('span');
+      meta.className = 't-meta';
+      meta.textContent = t.rows + '행 · ' + t.size;
+      btn.append(name, meta);
+      btn.addEventListener('click', () => openTable(t.name));
+      return btn;
+    }));
+    if (!data.tables.length) {
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = '아직 표가 없습니다.';
+      tableList.replaceChildren(p);
+    }
+    if (!current && data.tables.length) openTable(data.tables[0].name);
+  }
+
+  async function openTable(name, append) {
+    const my = ++seq;
+    if (!append) {
+      current = name;
+      offset = 0;
+      tableList.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.table === name)));
+      detailTitle.textContent = name;
+    }
+    dataMore.disabled = true;
+    try {
+      const d = await call({ action: 'db_table', table: name, offset, limit: PAGE });
+      if (my !== seq) return;
+      detailMeta.textContent = '전체 ' + d.total + '행';
+      colBody.replaceChildren(...d.columns.map((c) => rowEl([c.name, c.type, c.nullable ? '허용' : '불가', c.default])));
+      defItems(consList, d.constraints, '없음');
+      defItems(idxList, d.indexes, '없음');
+      if (!append) {
+        headRow(dataHead, d.fields);
+        dataBody.replaceChildren();
+      }
+      dataBody.append(...d.rows.map(rowEl));
+      offset += d.rows.length;
+      dataTitle.textContent = '데이터 (최근 순, ' + offset + ' / ' + d.total + '행)';
+      dataEmpty.hidden = d.total > 0;
+      dataMore.hidden = offset >= d.total;
+      detailBody.hidden = false;
+      setNote(detailNote, '', false);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.status === 401) return logout(e.message);
+      setNote(detailNote, e.message, true);
+    } finally {
+      dataMore.disabled = false;
+    }
+  }
+
+  async function runSql() {
+    const sql = sqlInput.value.trim();
+    if (!sql) { sqlInput.focus(); return; }
+    runBtn.disabled = true;
+    sqlInfo.textContent = '실행하는 중입니다…';
+    setNote(sqlError, '', true);
+    try {
+      const r = await call({ action: 'db_query', sql });
+      headRow(sqlHead, r.fields);
+      sqlBody.replaceChildren(...r.rows.map(rowEl));
+      sqlResultWrap.hidden = r.fields.length === 0;
+      sqlInfo.textContent = r.rows.length + '행' + (r.more ? ' (500행까지만 표시)' : '') + ' · ' + r.ms + 'ms';
+    } catch (e) {
+      if (e.status === 401) return logout(e.message);
+      sqlInfo.textContent = '';
+      sqlResultWrap.hidden = true;
+      setNote(sqlError, e.message, true);
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  async function login(fromStore) {
+    loginBtn.disabled = true;
+    setNote(loginNote, fromStore ? '' : '확인하는 중입니다…', false);
+    try {
+      await loadInfo();
+      sessionStorage.setItem(STORE, key);
+      loginForm.hidden = true;
+      panel.hidden = false;
+      keyInput.value = '';
+      $('pageTitle').focus({ preventScroll: true });
+    } catch (e) {
+      sessionStorage.removeItem(STORE);
+      key = '';
+      setNote(loginNote, e.message, true);
+      keyInput.select();
+    } finally {
+      loginBtn.disabled = false;
+    }
+  }
+
+  function logout(message) {
+    key = '';
+    current = null;
+    sessionStorage.removeItem(STORE);
+    panel.hidden = true;
+    loginForm.hidden = false;
+    setNote(loginNote, message || '', !!message);
+    keyInput.focus();
+  }
+
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    key = keyInput.value.trim();
+    if (!key) { setNote(loginNote, '관리자 비밀번호를 입력해 주세요.', true); keyInput.focus(); return; }
+    login(false);
+  });
+  dataMore.addEventListener('click', () => { if (current) openTable(current, true); });
+  runBtn.addEventListener('click', runSql);
+  sqlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSql(); }
+  });
+  $('examples').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-sql]');
+    if (!btn) return;
+    sqlInput.value = btn.dataset.sql;
+    runSql();
+  });
+
+  if (key) login(true);
+  else keyInput.focus();
+})();
+</script>
+</body>
+</html>
