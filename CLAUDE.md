@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `scoreboardV1/scoreboardV1.php` | 빠른 클리어 순위 API (PHP 8.2 + PostgreSQL). 아래 「빠른 클리어 순위」 참고 |
 | `guestbookV1/guestbookV1.php` | 방명록 API (같은 DB). 아래 「방명록」 참고 |
 | `adminV1/adminV1.html`, `adminV1/adminV1.php` | 관리자 화면과 API. 순위 기록·방명록 글을 보고 지움. 아래 「관리자 화면」 참고 |
+| `adminV1/dbV1.html` | DB 보기 페이지. 표 목록·구조·데이터와 읽기 전용 SQL 실행. API는 `adminV1.php`를 같이 씀 |
 
 **2D와 3D의 게임 데이터는 복사본입니다.** `JUMPS`, `TRAPS`, `FABLES`, `LADDER_STORY`, `SNAKE_STORY`, `DEST_NOTES`가 두 파일에 똑같이 들어 있습니다. 한쪽을 고치면 다른 쪽도 같이 고칩니다.
 
@@ -84,7 +85,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **API (`adminV1.php`):** POST JSON만 받습니다(비밀번호가 주소나 로그에 남지 않도록). 모든 요청에 `key`가 들어갑니다.
   - `action`: `summary`(표별 개수), `scores`(`board`: all/2d/3d, `offset`, `limit`), `guestbook`(`offset`, `limit`), `delete_score`/`delete_guestbook`(`id`)
   - 표가 아직 없으면 빈 목록을 돌려줍니다.
-- **화면:** 비밀번호는 `sessionStorage`에만 두어 탭을 닫으면 사라집니다. 「삭제」는 두 번 눌러야 지워집니다. 401을 받으면 처음 화면으로 돌아갑니다.
+- **화면:** 비밀번호는 `sessionStorage`(`snakeAdminKey`)에만 두어 탭을 닫으면 사라집니다. 「삭제」는 두 번 눌러야 지워집니다. 401을 받으면 처음 화면으로 돌아갑니다.
+- **DB 보기 (`adminV1/dbV1.html`):** cafe24 콘솔에는 DB를 보는 화면이 없어서 직접 만든 페이지입니다. 관리자 화면과 같은 비밀번호, 같은 `sessionStorage` 키를 씁니다.
+  - API 동작: `db_info`(DB 이름·버전·크기, public 표 목록과 행 수), `db_table`(열·제약 조건·인덱스·행. 표 이름은 `pg_tables` 목록에 있는 것만 받음), `db_query`(SQL 한 문장).
+  - **`db_query`는 데이터를 바꿀 수 없게 세 겹으로 막습니다:** 첫 낱말 검사(SELECT/WITH/EXPLAIN/SHOW/TABLE/VALUES), 서버 쪽 prepare(`ATTR_EMULATE_PREPARES => false`, 여러 문장 거절), `BEGIN READ ONLY` + `statement_timeout 5s` + 늘 `ROLLBACK`. 결과는 500행, 한 칸은 300자까지입니다. 2026-11-28 실제 DB에서 `WITH … UPDATE`, `EXPLAIN ANALYZE UPDATE`, 여러 문장, 6초 쿼리가 모두 거절되는 것을 확인했습니다(시험한 쓰기 문장은 모두 `WHERE false`).
+  - 실제 DB는 PostgreSQL 17입니다.
+  - 관리자 비밀번호는 사용자만 알고 있으므로 실제 사이트 화면에서 로그인하는 시험은 하지 않습니다. 화면은 모의 서버로, 실제 서버는 비밀번호 파일을 읽는 스크립트로 API만 확인합니다.
 
 ## 이름 규칙
 
