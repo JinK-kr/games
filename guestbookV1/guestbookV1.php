@@ -26,11 +26,17 @@ const LIMIT_DEFAULT = 20;
 const LIMIT_MAX = 50;
 
 // AI 답글: 앞 모델이 실패하면 다음 모델로 바로 다시 시도 (무료 모델은 붐비면 자주 거절됨)
-const AI_MODELS = ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free'];
+// 유료 모델은 쓰지 않는다(사용자 지시). 이름이 ':free'로 끝나지 않는 모델은 목록에 있어도 건너뛰고,
+// 요청마다 provider.max_price를 0으로 보내 OpenRouter가 무료 제공자에게만 보내게 한다.
+const AI_MODELS = [
+    'google/gemma-4-31b-it:free',
+    'google/gemma-4-26b-a4b-it:free',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+];
 const AI_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const AI_TIMEOUT = 20;       // 모델 하나당 기다리는 최대 초
-const AI_TRIES_MAX = 3;      // 글 하나당 AI 요청 최대 횟수 (남용·비용 막기)
-const AI_LOCK_SECONDS = 60;  // 한 요청이 답글을 만드는 동안(또는 붐벼서 실패한 뒤) 같은 글의 다음 요청은 기다림
+const AI_TRIES_MAX = 3;      // 글 하나당 AI 요청 최대 횟수 (남용 막기)
+const AI_LOCK_SECONDS = 90;  // 한 요청이 답글을 만드는 동안(모델 3개 × 20초) 또는 붐벼서 실패한 뒤, 같은 글의 다음 요청은 기다림
 const AI_REPLY_MAX = 200;    // 저장할 답글 최대 글자 수
 
 function reply(int $status, array $body): never
@@ -209,9 +215,10 @@ function callModel(string $key, string $model, string $prompt): array
     $body = json_encode([
         'model' => $model,
         'messages' => [['role' => 'user', 'content' => $prompt]],
-        'max_tokens' => 800,
+        'max_tokens' => 1500,  // 생각(reasoning)하는 모델이 생각에 토큰을 다 써서 답이 비지 않도록 넉넉히
         'temperature' => 0.7,
         'reasoning' => ['effort' => 'low', 'exclude' => true],
+        'provider' => ['max_price' => ['prompt' => 0, 'completion' => 0]],  // 유료 제공자로는 보내지 않음
     ], JSON_UNESCAPED_UNICODE);
     $headers = [
         'Authorization: Bearer ' . $key,
@@ -281,6 +288,11 @@ function makeAiReply(string $key, string $name, string $message): array
     $reasons = [];
     $allBusy = true;
     foreach (AI_MODELS as $model) {
+        if (!str_ends_with($model, ':free')) {
+            $allBusy = false;
+            $reasons[] = $model . ' → 유료 모델이라 건너뜀';
+            continue;
+        }
         [$text, $reason, $status] = callModel($key, $model, $prompt);
         $clean = $text === null ? null : cleanReply($text);
         if ($clean !== null) {
@@ -423,7 +435,7 @@ try {
             [$text, $info, $busy] = makeAiReply($key, (string) $mine['name'], (string) $mine['message']);
             if ($text === null) {
                 error_log('guestbookV1 ai_reply #' . $id . ': ' . $info);
-                // 무료 모델이 붐벼서(모두 429) 실패했으면 시도 횟수를 돌려주고 1분 동안 잠가 둠(1분에 한 번만 다시 시도).
+                // 무료 모델이 붐벼서(모두 429) 실패했으면 시도 횟수를 돌려주고 AI_LOCK_SECONDS 동안 잠가 둠.
                 // 다른 이유로 실패했으면 시도 횟수는 쓴 것으로 두고 잠금을 풀어 바로 다시 시도할 수 있게 함
                 $after = $pdo->prepare($busy
                     ? 'UPDATE guestbook SET ai_tries = GREATEST(ai_tries - 1, 0), ai_at = now() WHERE id = :id'
@@ -434,7 +446,7 @@ try {
                 reply(502, [
                     'ok' => false,
                     'error' => $busy
-                        ? 'AI가 지금 붐벼서 답글을 쓰지 못했습니다. 1분쯤 뒤에 다시 시도합니다.'
+                        ? 'AI가 지금 붐벼서 답글을 쓰지 못했습니다. 잠시 뒤 자동으로 다시 시도합니다.'
                         : 'AI가 지금 답글을 쓰지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
                     'retry_after' => $busy ? AI_LOCK_SECONDS : 0,
                     'detail' => cut($info, 300),

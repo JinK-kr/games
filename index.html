@@ -643,7 +643,7 @@ body:has(#select:target) .home, body:has(#guestbook:target) .home { display: non
         <span class="gb-count" id="gbCount">0 / 200</span>
         <button type="submit" class="gb-submit" id="gbSubmit">남기기</button>
       </div>
-      <p class="gb-ai-note">글을 남기면 AI(OpenRouter를 거친 Google Gemma 무료 모델)가 답글을 달아 줍니다. 이름과 글 내용이 AI 서비스로 전송되니 개인정보는 적지 마세요.</p>
+      <p class="gb-ai-note">글을 남기면 AI(OpenRouter를 거친 Google Gemma·NVIDIA Nemotron 무료 모델)가 답글을 달아 줍니다. 이름과 글 내용이 AI 서비스로 전송되니 개인정보는 적지 마세요.</p>
       <p class="gb-note" id="gbNote" role="status" hidden></p>
     </form>
     <p class="gb-offline" id="gbOffline" hidden>방명록은 게임 사이트(<a href="https://jink0208-games.mycafe24.ai/#guestbook">jink0208-games.mycafe24.ai</a>)에서 쓰고 볼 수 있습니다.</p>
@@ -819,7 +819,7 @@ body:has(#select:target) .home, body:has(#guestbook:target) .home { display: non
 
   // AI 답글 칸. state: done(답글) | waiting(만드는 중) | failed(시도 횟수를 다 씀).
   // waiting인데 opts.error가 있으면 오류 문장과 「다시 시도」를 보여 줌
-  function shortModel(model) { return String(model || '').replace(/^google\//, '').replace(/:free$/, ''); }
+  function shortModel(model) { return String(model || '').replace(/^[^/]+\//, '').replace(/:free$/, ''); }
 
   function renderAi(li, ai, opts) {
     let box = li.querySelector('.gb-ai');
