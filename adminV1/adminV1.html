@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 · 뱀주사위놀이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* 관리자 화면: 순위 기록과 방명록 글을 보고 지움. 사이트 어디에서도 링크하지 않음.
+   색과 글꼴은 index.html과 같음 */
+:root {
+  --bg: #EAF0FA;
+  --surface: #FFFFFF;
+  --ink: #1B1E3C;
+  --muted: #565B80;
+  --line: #C9D1E6;
+  --chip: #E4E9F5;
+  --accent: #D62839;
+  --accent-ink: #FFFFFF;
+  --block-shadow: #1B1E3C;
+  --band: #FFC93C;
+  --band-ink: #1B1E3C;
+  --title: #D62839;
+  --focus: #2F6BFF;
+  --font-display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11132A;
+    --surface: #1B1E3C;
+    --ink: #EEF0FA;
+    --muted: #A9AED0;
+    --line: #353A6C;
+    --chip: #282C55;
+    --accent: #FF5A67;
+    --accent-ink: #1B0A0C;
+    --block-shadow: #05060F;
+    --focus: #8DACFF;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; word-break: keep-all; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+[tabindex="-1"]:focus { outline: none; }
+[hidden] { display: none !important; }
+
+.band { background: var(--band); color: var(--band-ink); padding: 20px 0 16px; border-bottom: 4px solid var(--band-ink); }
+.inner { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.band .inner { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.eyebrow { margin: 0 0 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 2.4rem; line-height: 1; color: var(--title); text-shadow: 3px 3px 0 var(--band-ink); }
+.band a { color: var(--band-ink); font-weight: 700; font-size: 0.9rem; }
+main.inner { padding-top: 24px; padding-bottom: 48px; }
+
+.card { background: var(--surface); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 6px 6px 0 var(--block-shadow); padding: 18px 20px; }
+.login { max-width: 420px; display: grid; gap: 10px; }
+.login h2, .panel h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; }
+.login p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+input[type="password"] { flex: 1; min-width: 12em; font: inherit; padding: 9px 12px; color: var(--ink); background: var(--bg); border: 2px solid var(--ink); border-radius: 10px; }
+button { font: inherit; font-weight: 700; cursor: pointer; color: var(--ink); background: var(--chip); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 16px; }
+button.primary { color: var(--accent-ink); background: var(--accent); }
+button:disabled { opacity: 0.5; cursor: wait; }
+.note { margin: 0; font-weight: 700; font-size: 0.9rem; }
+.note.is-error { color: var(--accent); }
+
+.panel { display: grid; gap: 16px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.summary li { padding: 6px 14px; font-weight: 700; background: var(--surface); border: 2px solid var(--line); border-radius: 999px; font-variant-numeric: tabular-nums; }
+.tabs, .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button, .filters button { border-radius: 999px; padding: 5px 16px; }
+.tabs button[aria-pressed="true"], .filters button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+.filters button { font-size: 0.85rem; padding: 3px 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: 0.8rem; color: var(--muted); border-bottom-width: 2px; white-space: nowrap; }
+td.num { text-align: right; white-space: nowrap; }
+td.when { white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
+td.msg { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 16em; }
+td.who { font-weight: 700; white-space: nowrap; }
+td.act { text-align: right; white-space: nowrap; }
+.del { font-size: 0.8rem; padding: 3px 12px; border-radius: 999px; }
+.del.is-armed { color: var(--accent-ink); background: var(--accent); }
+.empty { margin: 8px 0 0; color: var(--muted); }
+.more { justify-self: center; border-radius: 999px; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<header class="band">
+  <div class="inner">
+    <div>
+      <p class="eyebrow">뱀주사위놀이</p>
+      <h1 id="pageTitle" tabindex="-1">관리자</h1>
+    </div>
+    <a href="../index.html">사이트로 가기</a>
+  </div>
+</header>
+
+<main class="inner">
+  <form class="card login" id="loginForm">
+    <h2>관리자 비밀번호</h2>
+    <p>순위 기록과 방명록 글을 보고 지울 수 있습니다. 비밀번호는 이 탭을 닫으면 잊어버립니다.</p>
+    <div class="row">
+      <input type="password" id="keyInput" autocomplete="current-password" aria-label="관리자 비밀번호" maxlength="200">
+      <button type="submit" class="primary" id="loginBtn">들어가기</button>
+    </div>
+    <p class="note" id="loginNote" role="status" hidden></p>
+  </form>
+
+  <section class="panel" id="panel" hidden aria-labelledby="pageTitle">
+    <ul class="summary" id="summary" aria-label="저장된 개수"></ul>
+    <div class="tabs" role="group" aria-label="볼 표">
+      <button type="button" data-tab="scores" aria-pressed="true">빠른 클리어 순위</button>
+      <button type="button" data-tab="guestbook" aria-pressed="false">방명록</button>
+    </div>
+    <div class="card" style="display:grid;gap:12px">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="tableTitle">빠른 클리어 순위</h2>
+        <div class="filters" id="filters" role="group" aria-label="놀이판">
+          <button type="button" data-board="all" aria-pressed="true">전체</button>
+          <button type="button" data-board="2d" aria-pressed="false">2D</button>
+          <button type="button" data-board="3d" aria-pressed="false">3D</button>
+        </div>
+      </div>
+      <p class="note" id="panelNote" role="status" hidden></p>
+      <div class="table-wrap">
+        <table>
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="empty" hidden>아직 없습니다.</p>
+      <button type="button" class="more" id="moreBtn" hidden>더 보기</button>
+    </div>
+    <div class="foot">
+      <span>최근에 올라온 것부터 보여 줍니다. 「삭제」는 두 번 눌러야 지워지며, 지운 것은 되돌릴 수 없습니다.</span>
+      <button type="button" id="logoutBtn">나가기</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const API = 'adminV1.php';
+  const PAGE = 50;
+  const STORE = 'snakeAdminKey';  // sessionStorage: 탭을 닫으면 사라짐
+  const $ = (id) => document.getElementById(id);
+  const loginForm = $('loginForm'), keyInput = $('keyInput'), loginBtn = $('loginBtn'), loginNote = $('loginNote');
+  const panel = $('panel'), summary = $('summary'), tableTitle = $('tableTitle'), filters = $('filters');
+  const panelNote = $('panelNote'), thead = $('thead'), tbody = $('tbody'), empty = $('empty'), moreBtn = $('moreBtn');
+  const tabs = [...document.querySelectorAll('[data-tab]')];
+  const boards = [...document.querySelectorAll('[data-board]')];
+
+  let key = sessionStorage.getItem(STORE) || '';
+  let tab = 'scores';
+  let board = 'all';
+  let offset = 0;
+  let seq = 0;
+
+  function setNote(el, text, isError) {
+    el.textContent = text;
+    el.classList.toggle('is-error', !!isError);
+    el.hidden = !text;
+  }
+
+  async function call(body) {
+    const res = await fetch(API, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ key }, body))
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* JSON이 아니면 서버가 없는 곳 */ }
+    if (!data) throw Object.assign(new Error('관리자 서버에 연결하지 못했습니다. 게임 사이트 주소에서 열어 주세요.'), { status: res.status });
+    if (data.ok !== true) throw Object.assign(new Error(data.error || '요청을 처리하지 못했습니다.'), { status: res.status });
+    return data;
+  }
+
+  function formatClear(ms) {
+    const total = Math.round(ms / 100) / 10;
+    const min = Math.floor(total / 60);
+    const sec = (total - min * 60).toFixed(1);
+    return min > 0 ? min + '분 ' + sec.padStart(4, '0') + '초' : sec + '초';
+  }
+
+  function td(text, className) {
+    const cell = document.createElement('td');
+    if (className) cell.className = className;
+    cell.textContent = text;
+    return cell;
+  }
+
+  function headRow(labels) {
+    const tr = document.createElement('tr');
+    labels.forEach(([label, cls]) => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.textContent = label;
+      if (cls) th.className = cls;
+      tr.append(th);
+    });
+    thead.replaceChildren(tr);
+  }
+
+  // 「삭제」: 처음 누르면 「한 번 더 누르면 삭제」로 바뀌고, 3초 안에 다시 누르면 지움
+  function deleteButton(label, onConfirm) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'del';
+    btn.textContent = '삭제';
+    btn.setAttribute('aria-label', label + ' 삭제');
+    let timer = 0;
+    btn.addEventListener('click', async () => {
+      if (!btn.classList.contains('is-armed')) {
+        btn.classList.add('is-armed');
+        btn.textContent = '한 번 더 누르면 삭제';
+        timer = setTimeout(() => { btn.classList.remove('is-armed'); btn.textContent = '삭제'; }, 3000);
+        return;
+      }
+      clearTimeout(timer);
+      btn.disabled = true;
+      try {
+        await onConfirm();
+        btn.closest('tr').remove();
+        empty.hidden = tbody.children.length > 0;
+        setNote(panelNote, label + '을 지웠습니다.', false);  // label은 늘 「…기록」, 「…글」로 끝남
+        loadSummary();
+      } catch (e) {
+        if (e.status === 401) return logout(e.message);
+        if (e.status === 404) { btn.closest('tr').remove(); loadSummary(); return; }
+        btn.disabled = false;
+        btn.classList.remove('is-armed');
+        btn.textContent = '삭제';
+        setNote(panelNote, e.message, true);
+      }
+    });
+    return btn;
+  }
+
+  function scoreRow(r) {
+    const tr = document.createElement('tr');
+    const act = td('', 'act');
+    act.append(deleteButton(r.name + '의 ' + r.board.toUpperCase() + ' 기록', () => call({ action: 'delete_score', id: r.id })));
+    tr.append(td(r.id, 'num'), td(r.board.toUpperCase()), td(r.name, 'who'), td(formatClear(r.time_ms), 'num'),
+      td(r.rolls + '번', 'num'), td(r.players + '명', 'num'), td(r.at, 'when'), act);
+    return tr;
+  }
+
+  function guestRow(r) {
+    const tr = document.createElement('tr');
+    const act = td('', 'act');
+    act.append(deleteButton(r.name + '의 방명록 글', () => call({ action: 'delete_guestbook', id: r.id })));
+    tr.append(td(r.id, 'num'), td(r.name, 'who'), td(r.message, 'msg'), td(r.at, 'when'), act);
+    return tr;
+  }
+
+  async function loadSummary() {
+    try {
+      const s = await call({ action: 'summary' });
+      summary.replaceChildren(...[['2D 기록', s.scores2d], ['3D 기록', s.scores3d], ['방명록', s.guestbook]].map(([label, n]) => {
+        const li = document.createElement('li');
+        li.textContent = label + ' ' + n + '건';
+        return li;
+      }));
+    } catch (e) {
+      if (e.status === 401) logout(e.message);
+    }
+  }
+
+  async function loadTable(append) {
+    const my = ++seq;
+    if (!append) offset = 0;
+    moreBtn.disabled = true;
+    try {
+      const data = tab === 'scores'
+        ? await call({ action: 'scores', board, offset, limit: PAGE })
+        : await call({ action: 'guestbook', offset, limit: PAGE });
+      if (my !== seq) return;
+      const rows = data.rows.map(tab === 'scores' ? scoreRow : guestRow);
+      if (append) tbody.append(...rows);
+      else tbody.replaceChildren(...rows);
+      offset += data.rows.length;
+      empty.hidden = tbody.children.length > 0;
+      moreBtn.hidden = offset >= data.total;
+      setNote(panelNote, '', false);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.status === 401) return logout(e.message);
+      setNote(panelNote, e.message, true);
+    } finally {
+      moreBtn.disabled = false;
+    }
+  }
+
+  function showTab(next) {
+    tab = next;
+    tabs.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
+    tableTitle.textContent = tab === 'scores' ? '빠른 클리어 순위' : '방명록';
+    filters.hidden = tab !== 'scores';
+    headRow(tab === 'scores'
+      ? [['번호', 'num'], ['놀이판'], ['이름'], ['시간', 'num'], ['주사위', 'num'], ['참가자', 'num'], ['올린 시각'], ['']]
+      : [['번호', 'num'], ['이름'], ['내용'], ['쓴 시각'], ['']]);
+    tbody.replaceChildren();
+    loadTable(false);
+  }
+
+  async function login(fromStore) {
+    loginBtn.disabled = true;
+    setNote(loginNote, fromStore ? '' : '확인하는 중입니다…', false);
+    try {
+      await call({ action: 'summary' });
+      sessionStorage.setItem(STORE, key);
+      loginForm.hidden = true;
+      panel.hidden = false;
+      keyInput.value = '';
+      loadSummary();
+      showTab(tab);
+      $('pageTitle').focus({ preventScroll: true });
+    } catch (e) {
+      sessionStorage.removeItem(STORE);
+      key = '';
+      setNote(loginNote, e.message, true);
+      keyInput.select();
+    } finally {
+      loginBtn.disabled = false;
+    }
+  }
+
+  function logout(message) {
+    key = '';
+    sessionStorage.removeItem(STORE);
+    panel.hidden = true;
+    loginForm.hidden = false;
+    tbody.replaceChildren();
+    summary.replaceChildren();
+    setNote(loginNote, message || '', !!message);
+    keyInput.focus();
+  }
+
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    key = keyInput.value.trim();
+    if (!key) { setNote(loginNote, '관리자 비밀번호를 입력해 주세요.', true); keyInput.focus(); return; }
+    login(false);
+  });
+  tabs.forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  boards.forEach((b) => b.addEventListener('click', () => {
+    board = b.dataset.board;
+    boards.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    loadTable(false);
+  }));
+  moreBtn.addEventListener('click', () => loadTable(true));
+  $('logoutBtn').addEventListener('click', () => logout(''));
+
+  if (key) login(true);
+  else keyInput.focus();
+})();
+</script>
+</body>
+</html>
