@@ -8,12 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 폴더 | 내용 |
 |---|---|
-| `index.html` | 사이트 첫 화면. 게임 코드는 없음. 화면 두 개: 첫 화면(`#home`, 「게임하기」 버튼) → 고르는 화면(`#select`, 2D·3D 카드). 전환은 CSS `:target`으로 하므로 뒤로 가기로 오가고, 게임에서 뒤로 가면 고르는 화면으로 돌아옴. 두 게임 파일을 상대 경로로 연결하므로, 게임 폴더나 파일 이름을 바꾸면 카드의 `href` 두 곳도 고침 |
+| `index.html` | 사이트 첫 화면. 게임 코드는 없음. 화면 세 개: 첫 화면(`#home`, 「게임하기」·「방명록 남기기」) → 고르는 화면(`#select`, 2D·3D 카드와 순위표), 방명록(`#guestbook`). 전환은 CSS `:target`으로 하므로 뒤로 가기로 오가고, 게임에서 뒤로 가면 고르는 화면으로 돌아옴. 화면을 추가하면 CSS의 `.screen-*`·`:target`·`body:has(...) .home` 세 줄과 스크립트의 `SCREENS`에 함께 넣음. 두 게임 파일을 상대 경로로 연결하므로, 게임 폴더나 파일 이름을 바꾸면 카드의 `href` 두 곳도 고침 |
 | `README.md` | GitHub 저장소 첫 페이지용 안내(사이트 주소, 버전별 파일) |
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전(2D 캔버스). HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
 | `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
 | `scoreboardV1/scoreboardV1.php` | 빠른 클리어 순위 API (PHP 8.2 + PostgreSQL). 아래 「빠른 클리어 순위」 참고 |
+| `guestbookV1/guestbookV1.php` | 방명록 API (같은 DB). 아래 「방명록」 참고 |
 
 **2D와 3D의 게임 데이터는 복사본입니다.** `JUMPS`, `TRAPS`, `FABLES`, `LADDER_STORY`, `SNAKE_STORY`, `DEST_NOTES`가 두 파일에 똑같이 들어 있습니다. 한쪽을 고치면 다른 쪽도 같이 고칩니다.
 
@@ -52,7 +53,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - 시작할 때 `Score.check()`가 GET을 한 번 보내 JSON `{ ok: true }`가 올 때만 이름 칸(`#scoreForm`)을 켭니다. 그래서 claude.ai 페이지, GitHub, 파일로 연 경우, static 서버에서는 이름 칸이 나오지 않습니다.
   - 축하 창의 이름 칸 → `Score.send()` → 「n위로 기록했습니다」와 `../index.html#select` 링크를 표시합니다.
 - **첫 페이지:** 고르는 화면(`#select`)의 `#ranking`에 놀이판별 10위까지 보여 줍니다. 응답을 한 번도 못 받으면 숨긴 채로 둡니다.
-- **로컬 시험:** 이 PC에는 PHP와 PostgreSQL이 없습니다. 저장소를 그대로 서비스하면서 `scoreboardV1/scoreboardV1.php`의 GET/POST를 메모리로 흉내 내는 작은 Python 서버로 화면 쪽을 확인했습니다. 승리 장면은 그 서버가 게임 HTML의 `<head> <!--wrap-->` 뒤에 `window.claude.hot` 상태(말 94칸, 아무도 안 굴림)와 고정 눈(2D는 `crypto.getRandomValues`, 3D는 `window.__snake3dTestRoll = 6`)을 끼워 넣어 만들었습니다. 브라우저 탭이 뒤에 있으면 애니메이션이 멈추므로 시험하는 탭을 앞에 둡니다.
+- **로컬 시험:** 아래 「방명록」과 같은 방식입니다. 이 PC에는 PHP와 PostgreSQL이 없습니다. 저장소를 그대로 서비스하면서 `scoreboardV1/scoreboardV1.php`의 GET/POST를 메모리로 흉내 내는 작은 Python 서버로 화면 쪽을 확인했습니다. 승리 장면은 그 서버가 게임 HTML의 `<head> <!--wrap-->` 뒤에 `window.claude.hot` 상태(말 94칸, 아무도 안 굴림)와 고정 눈(2D는 `crypto.getRandomValues`, 3D는 `window.__snake3dTestRoll = 6`)을 끼워 넣어 만들었습니다. 브라우저 탭이 뒤에 있으면 애니메이션이 멈추므로 시험하는 탭을 앞에 둡니다.
+
+## 방명록
+
+`index.html`의 `#guestbook` 화면과 `guestbookV1/guestbookV1.php` 하나로 동작합니다. DB와 응답 형식(`{ ok, ... }` / `{ ok: false, error }`)은 순위표와 같습니다.
+
+- **테이블 `guestbook`:** `id`, `name`(1~12자), `message`(1~200자), `password_hash`, `ip_hash`, `created_at`. 처음 요청 때 `ensureSchema()`가 만듭니다.
+  - 비밀번호는 `password_hash()` 결과만 저장합니다. 글쓴이가 그 비밀번호로 자기 글을 지웁니다. 관리자용 삭제 기능은 아직 없습니다.
+  - `ip_hash`는 IP를 `DB_PASSWORD`로 HMAC한 값입니다(원래 IP는 저장하지 않음). 같은 값으로 30초 안에 다시 쓰면 429를 돌려줍니다. IP는 `X-Forwarded-For`의 첫 값, 없으면 `REMOTE_ADDR`입니다. 서로 다른 사용자가 실제로 다른 값으로 잡히는지는 한 PC에서 확인할 수 없었습니다.
+  - 내용 정리: 줄바꿈은 남기고 빈 줄은 하나까지, 연속 공백은 하나로, 제어 문자는 제거합니다.
+- **API:**
+  - `GET [?before=<id>][&limit=20]` → `{ ok, more, entries: [{ id, name, message, at }] }`. 최신 글부터이고, `at`은 한국 시간 `YYYY-MM-DD HH:MM`.
+  - `POST {action:"add", name, message, password, website}` → `{ ok, entry }`. `website`는 봇을 거르는 숨은 칸이라 값이 있으면 거절합니다.
+  - `POST {action:"delete", id, password}` → `{ ok, id }`. 없는 글은 404, 비밀번호가 틀리면 403(0.4초 늦게 답함).
+- **화면:** 글은 늘 `textContent`로 넣습니다(HTML로 넣지 않음). 응답이 JSON이 아니면 서버가 없는 곳으로 보고 글쓰기 칸 대신 게임 사이트 주소를 안내합니다.
+- **실제 서버 확인:** 거절되는 요청(빈 이름, 짧은 비밀번호, 숨은 칸 채움, 없는 글 삭제)은 아무 때나 보내도 됩니다. 글쓰기까지 확인할 때는 시험 글을 올린 뒤 **같은 비밀번호로 바로 지웁니다** (2026-11-28 배포 때 이렇게 확인해서 id 1은 이미 쓰임).
+- **로컬 시험:** 저장소를 그대로 서비스하면서 두 PHP 파일의 GET/POST를 메모리로 흉내 내는 작은 Python 서버를 띄우고, `.claude/launch.json`으로 브라우저 창에서 엽니다. 시험이 끝나면 `launch.json`은 지웁니다(커밋하지 않음).
 
 ## 이름 규칙
 
