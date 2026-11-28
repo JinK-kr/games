@@ -254,7 +254,12 @@ function callModel(string $key, string $model, string $prompt): array
     $text = is_array($data) ? ($data['choices'][0]['message']['content'] ?? null) : null;
     if ($status !== 200 || !is_string($text) || trim($text) === '') {
         $reason = is_array($data) && isset($data['error']['message']) ? (string) $data['error']['message'] : $raw;
-        return [null, "HTTP {$status}: " . cut((string) $reason, 200)];
+        // 「Provider returned error」만으로는 이유를 알 수 없어, 제공자가 보낸 원문(metadata.raw)이 있으면 붙임
+        $raw2 = is_array($data) ? ($data['error']['metadata']['raw'] ?? null) : null;
+        if (is_string($raw2) && $raw2 !== '') {
+            $reason .= ' / ' . $raw2;
+        }
+        return [null, "HTTP {$status}: " . cut((string) $reason, 300)];
     }
     return [$text, ''];
 }
