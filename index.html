@@ -270,6 +270,57 @@ body:has(#select:target) .home { display: none; }
 .choice:hover .go { filter: brightness(1.06); }
 .choice:active .go { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--block-shadow); }
 
+/* 빠른 클리어 순위 (순위 서버가 응답할 때만 보임) */
+.ranking {
+  margin-top: 32px;
+  padding: 18px 20px 20px;
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 6px 6px 0 var(--block-shadow);
+}
+.rank-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.ranking h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; line-height: 1.2; }
+.rank-tabs { display: flex; gap: 6px; }
+.rank-tab {
+  font: inherit;
+  font-weight: 700;
+  min-width: 56px;
+  padding: 5px 14px;
+  color: var(--ink);
+  background: var(--chip);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.rank-tab[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+.rank-desc { margin: 6px 0 12px; color: var(--muted); font-size: 0.88rem; }
+.rank-scroll { overflow-x: auto; }
+.rank-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.rank-table th, .rank-table td { padding: 8px 10px; text-align: left; white-space: nowrap; }
+.rank-table th { font-size: 0.8rem; color: var(--muted); border-bottom: 2px solid var(--line); }
+.rank-table td { border-bottom: 1px solid var(--line); }
+.rank-table tbody tr:last-child td { border-bottom: none; }
+.rank-table .num { text-align: right; }
+.rank-table .who { white-space: normal; word-break: break-all; font-weight: 700; }
+.rank-no {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-weight: 700;
+  border-radius: 50%;
+  background: var(--chip);
+}
+.rank-no.is-1 { background: #FFC93C; color: #1B1E3C; }
+.rank-no.is-2 { background: #D5DAE6; color: #1B1E3C; }
+.rank-no.is-3 { background: #E8A56B; color: #1B1E3C; }
+.rank-empty, .rank-error { margin: 12px 0 0; color: var(--muted); }
+@media (max-width: 520px) {
+  .rank-table .opt { display: none; }
+  .rank-table th, .rank-table td { padding: 8px 6px; }
+}
+
 .foot { margin: 28px 0 0; color: var(--muted); font-size: 0.85rem; }
 </style>
 </head>
@@ -408,6 +459,34 @@ body:has(#select:target) .home { display: none; }
       </a>
     </div>
 
+    <section class="ranking" id="ranking" aria-labelledby="rankTitle" hidden>
+      <div class="rank-head">
+        <h2 id="rankTitle">빠른 클리어 순위</h2>
+        <div class="rank-tabs" role="group" aria-label="놀이판">
+          <button type="button" class="rank-tab" data-board="2d" aria-pressed="true">2D</button>
+          <button type="button" class="rank-tab" data-board="3d" aria-pressed="false">3D</button>
+        </div>
+      </div>
+      <p class="rank-desc">첫 주사위부터 100칸 도착까지 걸린 시간입니다. 사람이 이긴 판만 기록하며, 시간이 같으면 주사위를 적게 굴린 쪽이 앞섭니다.</p>
+      <div class="rank-scroll">
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th scope="col">순위</th>
+              <th scope="col">이름</th>
+              <th scope="col" class="num">시간</th>
+              <th scope="col" class="num">주사위</th>
+              <th scope="col" class="num opt">참가자</th>
+              <th scope="col" class="opt">날짜</th>
+            </tr>
+          </thead>
+          <tbody id="rankBody"></tbody>
+        </table>
+      </div>
+      <p class="rank-empty" id="rankEmpty" hidden>아직 기록이 없습니다. 첫 기록의 주인공이 되어 보세요.</p>
+      <p class="rank-error" id="rankError" hidden>순위를 불러오지 못했습니다. 잠시 뒤 다시 확인해 주세요.</p>
+    </section>
+
     <p class="foot">게임 화면에서 이 화면으로 돌아오려면 브라우저의 뒤로 가기를 사용합니다.</p>
   </main>
 </div>
@@ -419,8 +498,84 @@ body:has(#select:target) .home { display: none; }
     document.title = onSelect ? '놀이판 고르기 · 뱀주사위놀이' : '뱀주사위놀이';
     if (moveFocus) document.getElementById(onSelect ? 'selectTitle' : 'homeTitle').focus({ preventScroll: true });
   }
-  addEventListener('hashchange', () => { syncScreen(true); scrollTo(0, 0); });
+  addEventListener('hashchange', () => { syncScreen(true); scrollTo(0, 0); loadRanking(); });
   syncScreen(false);
+
+  // 빠른 클리어 순위: cafe24 서버(scoreboardV1/scoreboardV1.php, PostgreSQL)에서 놀이판별 10위까지 받아 표로 보여 줌.
+  // 서버가 없는 곳(GitHub, 파일로 직접 연 경우)에서는 순위 칸을 숨긴 채로 둠
+  const RANK_API = 'scoreboardV1/scoreboardV1.php';
+  const ranking = document.getElementById('ranking');
+  const rankBody = document.getElementById('rankBody');
+  const rankEmpty = document.getElementById('rankEmpty');
+  const rankError = document.getElementById('rankError');
+  const rankTabs = [...document.querySelectorAll('.rank-tab')];
+  let rankBoard = '2d';
+  let rankSeq = 0;
+
+  function formatClear(ms) {
+    const total = Math.round(ms / 100) / 10;
+    const min = Math.floor(total / 60);
+    const sec = (total - min * 60).toFixed(1);
+    return min > 0 ? min + '분 ' + sec.padStart(4, '0') + '초' : sec + '초';
+  }
+
+  function cell(text, className) {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    td.textContent = text;
+    return td;
+  }
+
+  function renderRanking(scores) {
+    rankBody.replaceChildren(...scores.map((s) => {
+      const tr = document.createElement('tr');
+      const no = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.className = 'rank-no' + (s.rank <= 3 ? ' is-' + s.rank : '');
+      badge.textContent = s.rank;
+      no.append(badge);
+      tr.append(
+        no,
+        cell(s.name, 'who'),
+        cell(formatClear(s.time_ms), 'num'),
+        cell(s.rolls + '번', 'num'),
+        cell(s.players + '명', 'num opt'),
+        cell(String(s.day || '').replaceAll('-', '.'), 'opt')
+      );
+      return tr;
+    }));
+    rankEmpty.hidden = scores.length > 0;
+  }
+
+  async function loadRanking() {
+    if (location.hash !== '#select' || !/^https?:$/.test(location.protocol)) return;
+    const seq = ++rankSeq;
+    const board = rankBoard;
+    try {
+      const res = await fetch(RANK_API + '?board=' + board + '&limit=10', { cache: 'no-store' });
+      const data = await res.json();
+      if (seq !== rankSeq) return;
+      if (!data || data.ok !== true || !Array.isArray(data.scores)) throw new Error('bad response');
+      renderRanking(data.scores);
+      rankError.hidden = true;
+      ranking.hidden = false;
+    } catch (e) {
+      if (seq !== rankSeq) return;
+      // 한 번도 받은 적이 없으면 순위 서버가 없는 곳으로 보고 숨김. 받은 적이 있으면 오류 문장을 보여 줌
+      if (!ranking.hidden) {
+        rankBody.replaceChildren();
+        rankEmpty.hidden = true;
+        rankError.hidden = false;
+      }
+    }
+  }
+
+  rankTabs.forEach((tab) => tab.addEventListener('click', () => {
+    rankBoard = tab.dataset.board;
+    rankTabs.forEach((t) => t.setAttribute('aria-pressed', String(t === tab)));
+    loadRanking();
+  }));
+  loadRanking();
 </script>
 </body>
 </html>

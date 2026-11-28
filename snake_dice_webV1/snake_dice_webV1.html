@@ -462,6 +462,17 @@ body {
 }
 .win-msg { margin: 0 0 6px; font-weight: 600; text-wrap: balance; }
 .win-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+/* 빠른 클리어 순위: 축하 창의 이름 입력 (휴대폰에서 판보다 길어지면 창 안에서 스크롤) */
+.win-card { max-height: 100%; overflow-y: auto; }
+.score-form { width: 100%; display: grid; gap: 6px; margin: 0 0 4px; padding: 10px 12px; text-align: left; background: var(--chip); border-radius: 12px; }
+.score-label { font-size: 0.85rem; font-weight: 700; }
+.score-row { display: flex; gap: 6px; }
+.score-input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; color: var(--ink); background: var(--surface); border: 2px solid var(--ink); border-radius: 10px; }
+.btn.score-send { flex: none; color: var(--accent-ink); background: var(--accent); border-color: var(--ink); }
+.btn.score-send:disabled { opacity: 0.5; cursor: wait; }
+.score-note { margin: 0 0 4px; font-size: 0.9rem; font-weight: 700; }
+.score-note.is-error { color: var(--accent); }
+.score-note a { color: inherit; text-underline-offset: 3px; margin-left: 6px; }
 @keyframes pop {
   from { transform: scale(0.6); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -709,6 +720,14 @@ select {
           <p class="win-eyebrow">100칸 도착</p>
           <h2 class="win-title" id="winTitle">축하합니다!</h2>
           <p class="win-msg" id="winMsg"></p>
+          <form class="score-form" id="scoreForm" hidden>
+            <label class="score-label" for="scoreName">빠른 클리어 순위에 이름 남기기</label>
+            <div class="score-row">
+              <input class="score-input" id="scoreName" type="text" maxlength="12" autocomplete="nickname" placeholder="이름 (12자까지)">
+              <button type="submit" class="btn score-send" id="scoreSend">기록 올리기</button>
+            </div>
+          </form>
+          <p class="score-note" id="scoreNote" role="status" hidden></p>
           <div class="win-actions">
             <button type="button" class="roll win-again" id="againBtn">한 판 더</button>
             <button type="button" class="btn" id="closeWinBtn">게임판 보기</button>
@@ -1130,6 +1149,10 @@ select {
   const winMsg = document.getElementById('winMsg');
   const againBtn = document.getElementById('againBtn');
   const closeWinBtn = document.getElementById('closeWinBtn');
+  const scoreForm = document.getElementById('scoreForm');
+  const scoreName = document.getElementById('scoreName');
+  const scoreSend = document.getElementById('scoreSend');
+  const scoreNote = document.getElementById('scoreNote');
 
   // 입체 주사위: 안쪽 심(모서리를 둥글게 보이게) + 여섯 면 (마주 보는 면의 합이 7)
   for (let f = 1; f <= 6; f++) {
@@ -1410,6 +1433,11 @@ select {
   let confetti = [];
   let effects = [];
   let computerTimer = null;
+  // 빠른 클리어 순위: 첫 주사위를 굴린 시각(performance.now)과 100칸까지 걸린 시간(ms).
+  // 이어 가기(window.claude.hot)로 시작한 판은 처음부터 잰 것이 아니므로 null로 두어 기록하지 않음
+  let clearStart = null;
+  let clearMs = null;
+  let scoreSent = false;
 
   // ---------- 말 그리기 ----------
   function drawPawn(c, x, ground, slotIndex, s) {
@@ -1826,6 +1854,9 @@ select {
     effects = [];
     logItems = [];
     readScenes = new Set();
+    clearStart = null;
+    clearMs = null;
+    scoreSent = false;
     hideWin();
     hideBurst();
     hideDice3d();
@@ -1861,6 +1892,7 @@ select {
     busy = true;
     render();
 
+    if (clearStart === null && players.every((q) => !q.rolls)) clearStart = performance.now();
     const roll = rollDie();
     p.rolls = (p.rolls || 0) + 1;
     await rollDiceAnim(roll);
@@ -1941,6 +1973,7 @@ select {
     if (p.pos === GOAL) {
       winner = idx;
       busy = false;
+      clearMs = clearStart === null ? null : Math.round(performance.now() - clearStart);
       addFx(GOAL, 'up', '#FFC93C');
       addLog(p, GOAL + '칸에 도착해 이겼습니다!', true);
       render();
@@ -2097,16 +2130,113 @@ select {
     const oldToken = document.getElementById('winToken');
     if (oldToken) oldToken.replaceWith(big);
     winTitle.textContent = cheer ? '축하합니다!' : '컴퓨터 승리!';
+    const time = clearMs === null ? '' : ' 걸린 시간은 ' + formatClear(clearMs) + '입니다.';
     const tail = ' 이솝 우화 장면을 ' + readScenes.size + '개 읽었어요.';
     winMsg.textContent = cheer
-      ? w.name + '님이 ' + GOAL + '칸에 가장 먼저 도착했습니다. 주사위를 ' + w.rolls + '번 굴렸습니다.' + tail
-      : w.name + '의 승리입니다. 주사위를 ' + w.rolls + '번 굴렸습니다. 다시 도전해 보세요!' + tail;
+      ? w.name + '님이 ' + GOAL + '칸에 가장 먼저 도착했습니다. 주사위를 ' + w.rolls + '번 굴렸습니다.' + time + tail
+      : w.name + '의 승리입니다. 주사위를 ' + w.rolls + '번 굴렸습니다.' + time + ' 다시 도전해 보세요!' + tail;
+    // 사람이 이겼고, 처음부터 시간을 쟀고, 순위 서버가 응답할 때만 이름 칸을 보여 줌
+    const canRecord = w.kind === 'human' && clearMs !== null && !scoreSent && Score.isReady();
+    scoreForm.hidden = !canRecord;
+    if (!scoreSent) scoreNote.hidden = true;
     winBox.hidden = false;
     if (moveFocus) {
-      try { againBtn.focus({ preventScroll: true }); } catch (e) { againBtn.focus(); }
+      const target = canRecord ? scoreName : againBtn;
+      try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
     }
   }
   function hideWin() { winBox.hidden = true; }
+
+  // ---------- 빠른 클리어 순위 ----------
+  // 첫 주사위부터 누군가 100칸에 닿을 때까지 시간을 재고, 사람이 이기면 이름을 받아
+  // cafe24 서버(scoreboardV1/scoreboardV1.php, PostgreSQL)에 기록합니다.
+  // 서버가 없는 곳(claude.ai 페이지, 파일로 직접 연 경우)에서는 이름 칸을 보여 주지 않습니다.
+  // 3D 버전에 같은 코드가 있습니다(BOARD만 다름). 한쪽을 고치면 다른 쪽도 고칩니다.
+  const Score = (() => {
+    const API = '../scoreboardV1/scoreboardV1.php';
+    const BOARD = '2d';
+    let ready = false;
+    async function call(url, opts) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 8000);
+      try {
+        const res = await fetch(url, Object.assign({ signal: ctl.signal, cache: 'no-store' }, opts));
+        const data = await res.json();
+        if (!data || data.ok !== true) {
+          const err = new Error((data && data.error) || '');
+          err.fromServer = true;
+          throw err;
+        }
+        return data;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    return {
+      board: BOARD,
+      isReady: () => ready,
+      // 순위 서버가 있는지 한 번 확인 (정적 서버는 없는 주소에도 HTML을 돌려주므로 JSON인지까지 확인)
+      check() {
+        if (!/^https?:$/.test(location.protocol)) return Promise.resolve(false);
+        return call(API + '?board=' + BOARD + '&limit=1').then(() => (ready = true), () => false);
+      },
+      send(entry) {
+        return call(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign({ board: BOARD }, entry))
+        });
+      }
+    };
+  })();
+
+  // 65432 → "1분 05.4초", 9876 → "9.9초"
+  function formatClear(ms) {
+    const total = Math.round(ms / 100) / 10;
+    const min = Math.floor(total / 60);
+    const sec = (total - min * 60).toFixed(1);
+    return min > 0 ? min + '분 ' + sec.padStart(4, '0') + '초' : sec + '초';
+  }
+
+  function showScoreNote(text, isError, withLink) {
+    scoreNote.textContent = text;
+    scoreNote.classList.toggle('is-error', !!isError);
+    if (withLink) {
+      const a = document.createElement('a');
+      a.href = '../index.html#select';
+      a.textContent = '순위표 보기';
+      scoreNote.append(a);
+    }
+    scoreNote.hidden = false;
+  }
+
+  scoreForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const w = players[winner];
+    if (!w || w.kind !== 'human' || clearMs === null || scoreSent) return;
+    const name = scoreName.value.trim().replace(/\s+/g, ' ');
+    if (!name) {
+      showScoreNote('이름을 입력해 주세요.', true);
+      scoreName.focus();
+      return;
+    }
+    const id = gameId;
+    scoreSend.disabled = true;
+    showScoreNote('기록을 올리는 중입니다…', false);
+    try {
+      const r = await Score.send({ name, time_ms: clearMs, rolls: w.rolls, players: players.length });
+      if (id !== gameId) return;
+      scoreSent = true;
+      scoreForm.hidden = true;
+      showScoreNote('2D 순위 ' + r.rank + '위로 기록했습니다.', false, true);
+      againBtn.focus();
+    } catch (err) {
+      if (id !== gameId) return;
+      showScoreNote(err && err.fromServer && err.message ? err.message : '기록을 올리지 못했습니다. 잠시 뒤 다시 시도해 주세요.', true);
+    } finally {
+      scoreSend.disabled = false;
+    }
+  });
 
   againBtn.addEventListener('click', () => { Sound.unlock(); newGame(setup); });
   closeWinBtn.addEventListener('click', () => {
@@ -2188,6 +2318,7 @@ select {
     try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(snapshot); } catch (e) { /* 미리보기 밖에서는 없음 */ }
     buildBoard();
     renderSound();
+    Score.check();
     const ok = data && Array.isArray(data.setup) && Array.isArray(data.players) && data.players.length >= 2;
     if (ok) {
       gameId++;
