@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 폴더 | 내용 |
 |---|---|
-| `index.html` | 저장소 첫 화면(GitHub Pages 시작 주소). 2D·3D 게임으로 가는 카드 두 장만 있고 게임 코드는 없음. 두 게임 파일을 상대 경로로 연결하므로, 게임 폴더나 파일 이름을 바꾸면 이 파일의 `href` 두 곳도 고침 |
+| `index.html` | 사이트 첫 화면. 게임 코드는 없음. 화면 두 개: 첫 화면(`#home`, 「게임하기」 버튼) → 고르는 화면(`#select`, 2D·3D 카드). 전환은 CSS `:target`으로 하므로 뒤로 가기로 오가고, 게임에서 뒤로 가면 고르는 화면으로 돌아옴. 두 게임 파일을 상대 경로로 연결하므로, 게임 폴더나 파일 이름을 바꾸면 카드의 `href` 두 곳도 고침 |
+| `README.md` | GitHub 저장소 첫 페이지용 안내(사이트 주소, 버전별 파일) |
 | `snake_dice_gameV1/` | Rust 터미널 버전. 외부 크레이트 없음. `download/snake_dice_gameV1.exe`는 커밋된 Windows 빌드 결과물 |
 | `snake_dice_webV1/snake_dice_webV1.html` | 웹 그래픽 버전(2D 캔버스). HTML 파일 하나에 CSS·JS가 모두 들어 있음. 빌드 과정 없음 |
 | `snake_dice_3dV1/snake_dice_3dV1.html` | 3D 버전(three.js + cannon-es 물리). 2D 버전의 규칙과 이야기(이솝 우화, 함정 칸, 칸 그림)를 모두 옮김. 2D 버전에 있는 참가자별 사람/컴퓨터 개별 설정 대신 3가지 고정 구성만 있음 |
@@ -24,6 +25,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 이야기 | 없음 | 이솝 우화 10편 (`FABLES` 등) |
 
 뱀 데이터는 두 버전 모두 `{높은 칸: 낮은 칸}` 형식입니다. 웹 버전은 높은 칸에 꼬리, 낮은 칸에 머리를 그립니다("꼬리를 밟으면 머리로 내려감").
+
+## 사이트 배포 (cafe24 ai-space)
+
+- 주소: https://jink0208-games.mycafe24.ai (프로젝트 `jink0208-games`, 런타임 static, DB 없음, 무료 공간 `space_01`)
+- GitHub App으로 이 저장소의 **기본 브랜치**(`claude/determined-allen-1ajw3i`)를 가져옵니다. 다른 브랜치는 배포되지 않습니다.
+- **푸시만으로는 자동 반영되지 않습니다** (2026-11-28 확인: 푸시 뒤 5분 넘게 기다려도 그대로). 푸시한 뒤 cafe24 MCP의 `external_repo`를 `action: repo_update`, `repo_name: games`, `project_name: games`로 불러 다시 배포합니다. 프로젝트 `source`가 `github`이므로 `update_project`는 쓰지 않습니다.
+- 반영 확인 주의: 이 서버는 없는 경로에도 `index.html`을 200으로 돌려줍니다. 상태 코드가 아니라 응답 내용으로 확인합니다.
 
 ## 이름 규칙
 
