@@ -262,7 +262,8 @@ td.act { text-align: right; white-space: nowrap; }
     const tr = document.createElement('tr');
     const act = td('', 'act');
     act.append(deleteButton(r.name + '의 방명록 글', () => call({ action: 'delete_guestbook', id: r.id })));
-    tr.append(td(r.id, 'num'), td(r.name, 'who'), td(r.message, 'msg'), td(r.at, 'when'), act);
+    const ai = r.ai_reply ? r.ai_reply + '\n— ' + String(r.ai_model || '').replace(/^google\//, '').replace(/:free$/, '') : '(없음)';
+    tr.append(td(r.id, 'num'), td(r.name, 'who'), td(r.message, 'msg'), td(ai, 'msg'), td(r.at, 'when'), act);
     return tr;
   }
 
@@ -311,7 +312,7 @@ td.act { text-align: right; white-space: nowrap; }
     filters.hidden = tab !== 'scores';
     headRow(tab === 'scores'
       ? [['번호', 'num'], ['놀이판'], ['이름'], ['시간', 'num'], ['주사위', 'num'], ['참가자', 'num'], ['올린 시각'], ['']]
-      : [['번호', 'num'], ['이름'], ['내용'], ['쓴 시각'], ['']]);
+      : [['번호', 'num'], ['이름'], ['내용'], ['AI 답글'], ['쓴 시각'], ['']]);
     tbody.replaceChildren();
     loadTable(false);
   }

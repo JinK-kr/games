@@ -225,12 +225,16 @@ try {
         if (!$hasGuestbook) {
             reply(200, ['ok' => true, 'total' => 0, 'rows' => []]);
         }
-        $stmt = $pdo->prepare('SELECT id, name, message, ' . KST . ' FROM guestbook ORDER BY id DESC LIMIT :limit OFFSET :offset');
+        // ai_reply 열은 guestbookV1.php가 처음 요청 때 더하므로, 아직 없을 수도 있음
+        $hasAi = countRows($pdo, "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'guestbook' AND column_name = 'ai_reply'") === 1;
+        $aiCols = $hasAi ? 'ai_reply, ai_model' : 'NULL AS ai_reply, NULL AS ai_model';
+        $stmt = $pdo->prepare("SELECT id, name, message, {$aiCols}, " . KST . ' FROM guestbook ORDER BY id DESC LIMIT :limit OFFSET :offset');
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = array_map(static fn (array $r): array => [
-            'id' => (int) $r['id'], 'name' => $r['name'], 'message' => $r['message'], 'at' => $r['at'],
+            'id' => (int) $r['id'], 'name' => $r['name'], 'message' => $r['message'],
+            'ai_reply' => $r['ai_reply'], 'ai_model' => $r['ai_model'], 'at' => $r['at'],
         ], $stmt->fetchAll());
         reply(200, ['ok' => true, 'total' => countRows($pdo, 'SELECT count(*) FROM guestbook'), 'rows' => $rows]);
     }
